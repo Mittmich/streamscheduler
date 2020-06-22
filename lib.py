@@ -28,7 +28,6 @@ FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
                         -pix_fmt yuv420p\
                         -f flv {}"""
 
-ENGINE = None  # for unittesting
 
 # misc
 
@@ -90,7 +89,7 @@ def checkMatch(streamQueue, currentTime):
     """Checks whether a stream needs to be started"""
 
 
-def dispatch_test_stream(credentials, engine=ENGINE):
+def dispatch_test_stream(credentials, engine=None):
     """Starts streaming via ffmpeg.
     Returns subprocess.Popen instance."""
     print(f"Engine is: {engine}")
@@ -110,7 +109,7 @@ def dispatch_test_stream(credentials, engine=ENGINE):
     return contID
 
 
-def startTestContainer(frame, engine=ENGINE):
+def startTestContainer(frame, engine=None):
     if engine is None:
         client = docker.from_env()
     else:
@@ -240,6 +239,3 @@ class Stream():
     def __init__(self, videoFile: Path, time: datetime.datetime):
         self.videoFile = videoFile
         self.time = time
-
-def printEngine():
-    print(ENGINE)

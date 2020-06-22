@@ -41,15 +41,19 @@ class mockContainers():
     def list(self):
         return self.containerList
 
+    def run(self, *args, **kwargs):
+        newCont = mockContainer()
+        self.containerList.append(newCont)
+        newCont.index = self.containerList.index(newCont)
+        return newCont
+    
+    def __len__(self):
+        return len(self.containerList)
+
 
 class mockEngine():
     def __init__(self) -> None:
         self.containers = mockContainers()
-
-    def run(self, *args):
-        newCont = mockContainer()
-        self.containers.list.append(newCont)
-        newCont.index = self.containers.list.find(newCont)
 
 
 # TestCases
@@ -110,12 +114,11 @@ class TestStream(unittest.TestCase):
         self.credentials = {"User": 12345, "Password": 678910,
                                 "rtmp-URL": "rtmp://i.amagood.server",
                                 "playpath": "dclive_0_1@2345"}
+        self.engine = mockEngine()
 
     def test_dispatch_test_stream(self):
-        # patch lib 
-        lib.ENGINE = mockEngine()
-        cont = lib.dispatch_test_stream(self.credentials)
-        print(cont)
+        cont = lib.dispatch_test_stream(self.credentials, self.engine)
+        self.assertEqual(len(self.engine.containers), 1)
 
 
 
