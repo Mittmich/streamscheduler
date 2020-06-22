@@ -32,10 +32,8 @@ FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
 
 
 def currentTime():
-    """Get current date and time in ISO8601"""
-    # https://en.wikipedia.org/wiki/ISO_8601
-    # https://xkcd.com/1179/
-    return datetime.datetime.now().strftime("%H:%M:%S")
+    """Get current date and time"""
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # parsing realted functions
 

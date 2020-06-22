@@ -20,6 +20,7 @@ class mockFrame(tkinter.Frame):
         self.master = master
         self.grid = None
         self.schedule = None
+        self.credentials = None
 
 # TestCases
 
@@ -45,6 +46,9 @@ class TestParse(unittest.TestCase):
                                         "Date/Time": [pd.Timestamp("2020-06-21 12:00:00"),
                                                       pd.Timestamp("2020-06-22 13:00:00"),
                                                       pd.Timestamp("2021-07-23 14:00:00")]})
+        self.goodCredentials = {"User": 12345, "Password": 678910, 
+                                "rtmp-URL": "rtmp://i.amagood.server",
+                                "playpath": "dclive_0_1@2345"}
         self.mockframe = mockFrame()
         # draw grid onto mockFrame
         drawConfigGrid(self.mockframe)
@@ -60,6 +64,8 @@ class TestParse(unittest.TestCase):
     def test_loadconfig(self):
         load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
+        self.assertEqual(self.mockframe.credentials, self.goodCredentials)
+
 
 if __name__ == '__main__':
     res = unittest.main(verbosity=3, exit=False)
