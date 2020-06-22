@@ -1,12 +1,13 @@
 from pathlib import Path
 import datetime
-from typing import Container
 import docker
 import re
 from tkinter import filedialog
 import pandas as pd
 import tkinter
 from tkinter.messagebox import showinfo
+import pathlib
+import numpy as np
 
 # define global variables
 
@@ -39,9 +40,33 @@ def currentTime():
 
 # parsing realted functions
 
+def check_config_timing(df):
+    # check time difference
+    diffs = pd.Series(np.diff(df["Date/Time"]))
+    target = datetime.timedelta(minutes=30)
+    try:
+        assert not any(diff < target for diff in diffs)
+    except AssertionError:
+        showinfo("Error", "Stream timepoints are closer together than 30 min!")
 
-def check_config(df):
+
+def check_config_format(df):
     """Checks whether config entries are valid"""
+    # check datatypes
+    try:
+        for row in df.iterrows():
+                assert isinstance(row[1]["Date"], datetime.datetime)
+                assert isinstance(row[1]["Time"], datetime.time)
+                assert isinstance(row[1]["File"], str)
+    except AssertionError:
+        showinfo("Error", "Schedule does not have the right format/datatypes!")
+    # check whether path to mp4 exists
+    try:
+        for fileP in df["File"]:
+            temp = pathlib.Path(fileP)
+            assert temp.exists()
+    except AssertionError:
+        showinfo("Error", "Video files do not exist!")
 
 
 def makeQueue(df):
@@ -67,9 +92,16 @@ def load_config(frame, filepath=None):
     else:
         filename = filepath
     schedule = pd.read_excel(filename)
+    # check format of config
+    check_config_format(schedule)
     # combine date and time for display
     schedule.loc[:, "Date/Time"] = schedule.apply(lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1)
     schedule = schedule.drop(columns=["Date", "Time"])
+    # sort by date/time
+    schedule = schedule.sort_values(by="Date/Time")
+    # check config
+    check_config_timing(schedule)
+    # load credentials
     credentials = pd.read_excel(filename, sheet_name="Credentials")
     frame.credentials = credentials.T[0].to_dict()
     frame.schedule = schedule
