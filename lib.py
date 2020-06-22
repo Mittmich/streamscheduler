@@ -40,6 +40,7 @@ def currentTime():
 
 # parsing realted functions
 
+
 def check_config_timing(df):
     # check time difference
     diffs = pd.Series(np.diff(df["Date/Time"]))
@@ -60,6 +61,7 @@ def check_config_format(df):
                 assert isinstance(row[1]["File"], str)
     except AssertionError:
         showinfo("Error", "Schedule does not have the right format/datatypes!")
+        return False
     # check whether path to mp4 exists
     try:
         for fileP in df["File"]:
@@ -67,6 +69,8 @@ def check_config_format(df):
             assert temp.exists()
     except AssertionError:
         showinfo("Error", "Video files do not exist!")
+        return False
+    return True
 
 
 def makeQueue(df):
@@ -93,19 +97,20 @@ def load_config(frame, filepath=None):
         filename = filepath
     schedule = pd.read_excel(filename)
     # check format of config
-    check_config_format(schedule)
-    # combine date and time for display
-    schedule.loc[:, "Date/Time"] = schedule.apply(lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1)
-    schedule = schedule.drop(columns=["Date", "Time"])
-    # sort by date/time
-    schedule = schedule.sort_values(by="Date/Time")
-    # check config
-    check_config_timing(schedule)
-    # load credentials
-    credentials = pd.read_excel(filename, sheet_name="Credentials")
-    frame.credentials = credentials.T[0].to_dict()
-    frame.schedule = schedule
-    draw_config(frame, schedule)
+    good = check_config_format(schedule)
+    if good:
+        # combine date and time for display
+        schedule.loc[:, "Date/Time"] = schedule.apply(lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1)
+        schedule = schedule.drop(columns=["Date", "Time"])
+        # sort by date/time
+        schedule = schedule.sort_values(by="Date/Time")
+        # check config
+        check_config_timing(schedule)
+        # load credentials
+        credentials = pd.read_excel(filename, sheet_name="Credentials")
+        frame.credentials = credentials.T[0].to_dict()
+        frame.schedule = schedule
+        draw_config(frame, schedule)
 
 
 def parseFailure(container):
@@ -120,7 +125,9 @@ def parseFailure(container):
 def draw_config(window, loadedFrame):
     # draw elements
     for index, row in enumerate(loadedFrame.head(n=10).iterrows()):
-        window.grid["grid"][index][0].set(row[1]["File"])
+        # only show filename
+        filePath = pathlib.Path(row[1]["File"])
+        window.grid["grid"][index][0].set(filePath.name)
         window.grid["grid"][index][1].set(row[1]["Date/Time"])
 
 
