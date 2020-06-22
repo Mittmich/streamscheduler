@@ -1,5 +1,5 @@
 import tkinter
-from lib import load_config, createTimeWidget, createStatusWidget, setStream, startTestContainer, stopTestContainer, drawConfigGrid
+from lib import load_config, createTimeWidget, createStatusWidget, setStream, startTestContainer, stopTestContainer, drawConfigGrid, checkStream
 from functools import partial
 
 
@@ -48,6 +48,8 @@ class Window(tkinter.Frame):
         for i in range(2):
                 self.columnconfigure(i, weight=1, minsize=25)
                 self.rowconfigure(i, weight=1, minsize=25)
+        # initial call to checkstream
+        checkStream(self)
 
     def client_exit(self):
         exit()

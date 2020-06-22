@@ -1,5 +1,6 @@
 from pathlib import Path
 import datetime
+from typing import Container
 import docker
 import re
 from tkinter import filedialog
@@ -75,6 +76,15 @@ def load_config(frame, filepath=None):
     draw_config(frame, schedule)
 
 
+def parseFailure(container):
+    """Check if container has failed.
+    This is very crude!"""
+    check = container.logs().decode()
+    if ("error" in check) or ("failure" in check):
+        return True
+    return False
+
+
 def draw_config(window, loadedFrame):
     # draw elements
     for index, row in enumerate(loadedFrame.head(n=10).iterrows()):
@@ -109,27 +119,20 @@ def dispatch_test_stream(credentials, engine=None):
 
 
 def startTestContainer(frame, engine=None):
-    if engine is None:
-        client = docker.from_env()
-    else:
-        client = engine
     if frame.credentials is None:
         showinfo("Error", "No credentials specified!")
         return
-    if (frame.container is None) and (len(client.containers.list()) == 0):
+    if frame.container is not None:
+        showinfo("Error", "A stream is already running!")
+    else:
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
         setStream(frame, "grey", "Waiting")
-    # wait for container to be ok
-    output = next(parseContainerOutput(frame.container))
-    # set stream Ok
-    if output is not None:
-        setStream(frame, "green", output)
-    frame.after(1000, startTestContainer, frame)
 
 
 def stopTestContainer(frame):
     if frame.container is not None:
         frame.container.stop()
+        frame.container = None
     else:
         showinfo("Error", "No container is running!")
         return
@@ -186,6 +189,41 @@ def createStatusWidget(frame):
     frame.lbl_StreamSpeed["textvariable"] = frame.streamSpeed
     frame.lbl_StreamSpeed.configure(bg=frame.status.get())
     frameS.grid(column=0, row=1, sticky="S")
+
+
+def checkStream(frame):
+    """checks continuously whether
+    a Stream is running and sets the
+    statusWidget accordingly"""
+    client = docker.from_env()
+    # check whether container is running
+    if frame.container is not None:
+        status = frame.container.status
+        if status == "created":
+            # check whether stream is in client
+            containers = client.containers.list()
+            if frame.container not in containers:
+                # check whether there is a failure
+                failed = parseFailure(frame.container)
+                if failed:  # failure
+                    setStream(frame, "red", "-/-")
+                else:  # was ok
+                    setStream(frame, "yellow", "Inactivate")
+            else:  # just started
+                setStream(frame, "green", "-/-")
+                # get bitrate
+                output = next(parseContainerOutput(frame.container))
+                # set stream Ok
+                if output is not None:
+                    setStream(frame, "green", output)
+        if status == "running":
+            setStream(frame, "green", "-/-")
+            # get bitrate
+            output = next(parseContainerOutput(frame.container))
+            # set stream Ok
+            if output is not None:
+                setStream(frame, "green", output)
+    frame.after(1000, checkStream, frame)
 
 
 def setStream(frame, color, rate):
