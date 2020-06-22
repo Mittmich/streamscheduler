@@ -19,7 +19,7 @@ class mockFrame(tkinter.Frame):
         tkinter.Frame.__init__(self, master)
         self.master = master
         self.grid = None
-        self.schedule = None
+        self.schedule = pd.DataFrame()
         self.credentials = None
 
 # TestCases
@@ -46,7 +46,7 @@ class TestParse(unittest.TestCase):
                                         "Date/Time": [pd.Timestamp("2020-06-21 12:00:00"),
                                                       pd.Timestamp("2020-06-22 13:00:00"),
                                                       pd.Timestamp("2021-07-23 14:00:00")]})
-        self.goodCredentials = {"User": 12345, "Password": 678910, 
+        self.goodCredentials = {"User": 12345, "Password": 678910,
                                 "rtmp-URL": "rtmp://i.amagood.server",
                                 "playpath": "dclive_0_1@2345"}
         self.mockframe = mockFrame()
@@ -65,6 +65,14 @@ class TestParse(unittest.TestCase):
         load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
         self.assertEqual(self.mockframe.credentials, self.goodCredentials)
+
+    def test_drawconfig(self):
+        load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
+        for i in range(len(self.mockframe.schedule)):
+            tempFile = self.mockframe.grid["grid"][i][0].get()
+            self.assertEqual(self.mockframe.schedule.iloc[i, 0], tempFile)
+            tempDateTime = pd.Timestamp(self.mockframe.grid["grid"][i][1].get())
+            self.assertEqual(self.mockframe.schedule.iloc[i, 1], tempDateTime)
 
 
 if __name__ == '__main__':
