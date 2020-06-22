@@ -92,7 +92,6 @@ def checkMatch(streamQueue, currentTime):
 def dispatch_test_stream(credentials, engine=None):
     """Starts streaming via ffmpeg.
     Returns subprocess.Popen instance."""
-    print(f"Engine is: {engine}")
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
                                               credentials["User"], credentials["Password"],
@@ -118,7 +117,7 @@ def startTestContainer(frame, engine=None):
         showinfo("Error", "No credentials specified!")
         return
     if (frame.container is None) and (len(client.containers.list()) == 0):
-        frame.container = dispatch_test_stream(frame.credentials)
+        frame.container = dispatch_test_stream(frame.credentials, engine=engine)
         setStream(frame, "grey", "Waiting")
     # wait for container to be ok
     output = next(parseContainerOutput(frame.container))
