@@ -22,6 +22,7 @@ class Window(tkinter.Frame):
         # set up parameter variables
         self.credentials = None
         self.container = None
+        self.streamActive = False
         # allowing the widget to take the full space of the root window
         self.pack(fill="both", expand=1)
         # creating a menu instance

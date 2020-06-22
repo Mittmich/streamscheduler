@@ -5,7 +5,7 @@ import re
 from tkinter import filedialog
 import pandas as pd
 import tkinter
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showerror, showinfo
 import pathlib
 import numpy as np
 
@@ -30,6 +30,19 @@ FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
                         -pix_fmt yuv420p\
                         -f flv {}"""
 
+FFMPEG_TEMPLATE = """ffmpeg -re\
+                        -i {}\
+                        -c:v libx264\
+                        -b:v 1600k\
+                        -preset ultrafast\
+                        -b 900k\
+                        -c:a libfdk_aac\
+                        -b:a 128k\
+                        -s 960x720\
+                        -x264opts keyint=50\
+                        -g 25\
+                        -pix_fmt yuv420p\
+                        -f flv {}"""
 
 # misc
 
@@ -73,11 +86,6 @@ def check_config_format(df):
     return True
 
 
-def makeQueue(df):
-    """Makes a queue of videos to stream from config files
-    """
-
-
 def parseContainerOutput(contID):
     """Parses container output"""
     while True:
@@ -106,11 +114,14 @@ def load_config(frame, filepath=None):
         schedule = schedule.sort_values(by="Date/Time")
         # check config
         check_config_timing(schedule)
+        # prune out past events
+        schedule = schedule.loc[schedule["Date/Time"] > frame.nowDT, :]
         # load credentials
         credentials = pd.read_excel(filename, sheet_name="Credentials")
         frame.credentials = credentials.T[0].to_dict()
         frame.schedule = schedule
         draw_config(frame, schedule)
+        checkRightTime(frame)
 
 
 def parseFailure(container):
@@ -147,6 +158,25 @@ def dispatch_test_stream(credentials, engine=None):
                                               credentials["playpath"])
     # fill in ffmpeg
     ffmpegCommand = FFMPEG_TEMPLATE_TEST.format(filledRTMP)
+    # connect to docker client
+    if engine is None:
+        client = docker.from_env()
+    else:
+        client = engine
+    # start container
+    contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
+    return contID
+
+
+def dispatch_stream(videofile, credentials, engine=None):
+    """Starts streaming via ffmpeg.
+    Returns subprocess.Popen instance."""
+    # fill in credentials
+    filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
+                                              credentials["User"], credentials["Password"],
+                                              credentials["playpath"])
+    # fill in ffmpeg
+    ffmpegCommand = FFMPEG_TEMPLATE_TEST.format(videofile, filledRTMP)
     # connect to docker client
     if engine is None:
         client = docker.from_env()
@@ -203,6 +233,8 @@ def createTimeWidget(frame):
 def onUpdate(frame):
     # update displayed time
     frame.now.set(currentTime())
+    # update internal time
+    frame.nowDT = datetime.datetime.now()
     # schedule timer to call myself after 1 second
     frame.after(1000, onUpdate, frame)
 
@@ -246,8 +278,12 @@ def checkStream(frame):
                 failed = parseFailure(frame.container)
                 if failed:  # failure
                     setStream(frame, "red", "-/-")
-                else:  # was ok
+                    showerror("Error", "Stream failed!")
+                    frame.streamActive = False  # reset stream active flag
+                else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactivate")
+                    frame.streamActive = False  # reset stream active flag
+                    showinfo("Info", "Stream ended succesfully!")
             else:  # just started
                 setStream(frame, "green", "-/-")
                 # get bitrate
@@ -308,10 +344,24 @@ def drawConfigGrid(window):
             frameM.columnconfigure(index, weight=1, minsize=200)
             frameM.rowconfigure(j, weight=1, minsize=20)
     frameM.grid(row=0, columnspan=2)
-# Streaming related classes
 
 
-class Stream():
-    def __init__(self, videoFile: Path, time: datetime.datetime):
-        self.videoFile = videoFile
-        self.time = time
+def checkRightTime(frame):
+    """checks whether it is time to stream."""
+    if not frame.streamActive:
+        # check the next stream to start
+        nextRow = next(frame.schedule.iterrows())[1]
+        time = nextRow["Date/Time"]
+        videoFile = nextRow["File"]
+        # check whether it is time to start
+        now = frame.nowDT
+        difference = datetime.timedelta(minutes=1)
+        print(f"Differece is: {np.abs(now - time)}")
+        if np.abs(now - time) < difference:
+            frame.container = dispatch_stream(videoFile, frame.credentials)
+            showinfo("Start", f"Stream start: {videoFile.name} at {time}")
+            # set stream activate to true
+            frame.straeamActive = True
+            # pluck the row from the schedule
+            frame.schedule = frame.schedule.iloc[1:, :]
+    frame.after(1000, checkRightTime, frame)
