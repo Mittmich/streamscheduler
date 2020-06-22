@@ -60,15 +60,19 @@ def parseContainerOutput(contID):
             yield re.findall(r"\d+\.\dkbits\/s", line.strip().decode())[-1]  # yield newest bitrate
 
 
-def load_config(frame):
-    filename = filedialog.askopenfilename(initialdir="/", title="Select file",
-                                          filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")))
+def load_config(frame, filepath=None):
+    if filepath is None:
+        filename = filedialog.askopenfilename(initialdir="/", title="Select file",
+                                              filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")))
+    else:
+        filename = filepath
     schedule = pd.read_excel(filename)
     # combine date and time for display
     schedule.loc[:, "Date/Time"] = schedule.apply(lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1)
     schedule = schedule.drop(columns=["Date", "Time"])
     credentials = pd.read_excel(filename, sheet_name="Credentials")
     frame.credentials = credentials.T[0].to_dict()
+    frame.schedule = schedule
     draw_config(frame, schedule)
 
 
@@ -193,6 +197,7 @@ def drawConfigGrid(window):
     window.grid = {"Names": [], "grid": grid}
     frameM = tkinter.Frame(window)  # child of window
     # draw column boxes
+    window.grid["Names"] = {}
     for i, name in enumerate(["File", "Date/Time"]):
         frame = tkinter.Frame(
                 frameM,
@@ -204,7 +209,7 @@ def drawConfigGrid(window):
         label.pack()
         frameM.columnconfigure(i, weight=1, minsize=200)
         frameM.rowconfigure(0, weight=1, minsize=20)
-        window.grid["Names"].append(frame)
+        window.grid["Names"][name] = label
     # draw grid elements
     for index, row in enumerate(range(10), start=1):
         for j in range(2):
