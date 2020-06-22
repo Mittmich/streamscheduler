@@ -1,17 +1,24 @@
+from typing import Container
 import unittest
-from lib import drawConfigGrid, parseContainerOutput, load_config
+from unittest.mock import patch
+import lib
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import tkinter
+import random
 # helper classes
 
 
 class mockContainer():
-    def __init__(self, log):
+    def __init__(self, log=None):
         self.log = log
+        self.index = None
 
     def logs(self, tail=1):
         return self.log
+
+    def stop(self):
+        ENGINE.containers.pop(self.index)
 
 
 class mockFrame(tkinter.Frame):
@@ -22,13 +29,36 @@ class mockFrame(tkinter.Frame):
         self.schedule = pd.DataFrame()
         self.credentials = None
 
+    def after(*args):
+        """Override after method to avoid repeated calling"""
+        pass
+
+
+class mockContainers():
+    def __init__(self):
+        self.containerList = []
+
+    def list(self):
+        return self.containerList
+
+
+class mockEngine():
+    def __init__(self) -> None:
+        self.containers = mockContainers()
+
+    def run(self, *args):
+        newCont = mockContainer()
+        self.containers.list.append(newCont)
+        newCont.index = self.containers.list.find(newCont)
+
+
 # TestCases
 
 
 class TestGui(unittest.TestCase):
     def test_drawconfigGrid(self):
         mockframe = mockFrame()
-        drawConfigGrid(mockframe)
+        lib.drawConfigGrid(mockframe)
         self.assertEqual(list(mockframe.grid["Names"].keys()), ["File", "Date/Time"])
         self.assertEqual(len(mockframe.grid["grid"]), 10)
         for i in range(10):
@@ -51,28 +81,43 @@ class TestParse(unittest.TestCase):
                                 "playpath": "dclive_0_1@2345"}
         self.mockframe = mockFrame()
         # draw grid onto mockFrame
-        drawConfigGrid(self.mockframe)
+        lib.drawConfigGrid(self.mockframe)
 
     def test_parseContainerOutput(self):
         # test no bitrate
-        result = next(parseContainerOutput(self.badContainer))
+        result = next(lib.parseContainerOutput(self.badContainer))
         self.assertIsNone(result)
         # test bitrate
-        result = next(parseContainerOutput(self.GoodContainer))
+        result = next(lib.parseContainerOutput(self.GoodContainer))
         self.assertEqual(result, "920.3kbits/s")
 
     def test_loadconfig(self):
-        load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
+        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
         self.assertEqual(self.mockframe.credentials, self.goodCredentials)
 
     def test_drawconfig(self):
-        load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
+        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
         for i in range(len(self.mockframe.schedule)):
             tempFile = self.mockframe.grid["grid"][i][0].get()
             self.assertEqual(self.mockframe.schedule.iloc[i, 0], tempFile)
             tempDateTime = pd.Timestamp(self.mockframe.grid["grid"][i][1].get())
             self.assertEqual(self.mockframe.schedule.iloc[i, 1], tempDateTime)
+
+
+class TestStream(unittest.TestCase):
+    def setUp(self):
+        self.credentials = {"User": 12345, "Password": 678910,
+                                "rtmp-URL": "rtmp://i.amagood.server",
+                                "playpath": "dclive_0_1@2345"}
+
+    def test_dispatch_test_stream(self):
+        # patch lib 
+        lib.ENGINE = mockEngine()
+        cont = lib.dispatch_test_stream(self.credentials)
+        print(cont)
+
+
 
 
 if __name__ == '__main__':

@@ -28,6 +28,8 @@ FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
                         -pix_fmt yuv420p\
                         -f flv {}"""
 
+ENGINE = None  # for unittesting
+
 # misc
 
 
@@ -88,9 +90,10 @@ def checkMatch(streamQueue, currentTime):
     """Checks whether a stream needs to be started"""
 
 
-def dispatch_test_stream(credentials):
+def dispatch_test_stream(credentials, engine=ENGINE):
     """Starts streaming via ffmpeg.
     Returns subprocess.Popen instance."""
+    print(f"Engine is: {engine}")
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
                                               credentials["User"], credentials["Password"],
@@ -98,14 +101,20 @@ def dispatch_test_stream(credentials):
     # fill in ffmpeg
     ffmpegCommand = FFMPEG_TEMPLATE_TEST.format(filledRTMP)
     # connect to docker client
-    client = docker.from_env()
+    if engine is None:
+        client = docker.from_env()
+    else:
+        client = engine
     # start container
     contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
     return contID
 
 
-def startTestContainer(frame):
-    client = docker.from_env()
+def startTestContainer(frame, engine=ENGINE):
+    if engine is None:
+        client = docker.from_env()
+    else:
+        client = engine
     if frame.credentials is None:
         showinfo("Error", "No credentials specified!")
         return
@@ -231,3 +240,6 @@ class Stream():
     def __init__(self, videoFile: Path, time: datetime.datetime):
         self.videoFile = videoFile
         self.time = time
+
+def printEngine():
+    print(ENGINE)
