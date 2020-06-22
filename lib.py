@@ -30,6 +30,7 @@ FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
 
 # misc
 
+
 def currentTime():
     """Get current date and time in ISO8601"""
     # https://en.wikipedia.org/wiki/ISO_8601
