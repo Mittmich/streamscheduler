@@ -13,6 +13,7 @@ class Window(tkinter.Frame):
         self.init_window()
 
     def init_window(self):
+        # TODO check whether other containers are running and clean up!
         # changing the title of our master widget
         self.master.title("FGO Stream Scheduler")
         # set up widgets

@@ -66,6 +66,7 @@ def check_config_timing(df):
 
 def check_config_format(df):
     """Checks whether config entries are valid"""
+    # TODO: Check same videodirectory
     # check datatypes
     try:
         for row in df.iterrows():
@@ -94,7 +95,11 @@ def parseContainerOutput(contID):
             yield None
         else:
             # standard out trick to parse ffmpeg output
-            yield re.findall(r"\d+\.\dkbits\/s", line.strip().decode())[-1]  # yield newest bitrate
+            matched = re.findall(r"\d+\.\dkbits\/s", line.strip().decode())
+            if len(matched) > 0:
+                yield re.findall(r"\d+\.\dkbits\/s", line.strip().decode())[-1]  # yield newest bitrate
+            else:
+                yield None
 
 
 def load_config(frame, filepath=None):
@@ -116,19 +121,25 @@ def load_config(frame, filepath=None):
         check_config_timing(schedule)
         # prune out past events
         schedule = schedule.loc[schedule["Date/Time"] > frame.nowDT, :]
-        # load credentials
-        credentials = pd.read_excel(filename, sheet_name="Credentials")
-        frame.credentials = credentials.T[0].to_dict()
-        frame.schedule = schedule
-        draw_config(frame, schedule)
-        checkRightTime(frame)
+        if len(schedule) == 0:
+            showerror("Error", "Only past events provided!")
+        else:
+            # load credentials
+            credentials = pd.read_excel(filename, sheet_name="Credentials")
+            frame.credentials = credentials.T[0].to_dict()
+            # add pathmap for docker mapping
+            tempBase = pathlib.Path(schedule["File"].values[0]).parent
+            frame.pathMap = {tempBase: {"bind": "/vids"}}
+            frame.schedule = schedule
+            draw_config(frame, schedule)
+            checkRightTime(frame)
 
 
 def parseFailure(container):
     """Check if container has failed.
     This is very crude!"""
     check = container.logs().decode()
-    if ("error" in check) or ("failure" in check):
+    if ("error" in check) or ("failure" in check) or ("not found" in check):
         return True
     return False
 
@@ -164,11 +175,16 @@ def dispatch_test_stream(credentials, engine=None):
     else:
         client = engine
     # start container
-    contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
-    return contID
+    try:
+        contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
+    except docker.errors.APIError:
+        showerror("Erro", "Docker is not ready/installed!")
+        return None
+    else:
+        return contID
 
 
-def dispatch_stream(videofile, credentials, engine=None):
+def dispatch_stream(videofile, credentials, pathmap, engine=None):
     """Starts streaming via ffmpeg.
     Returns subprocess.Popen instance."""
     # fill in credentials
@@ -176,15 +192,19 @@ def dispatch_stream(videofile, credentials, engine=None):
                                               credentials["User"], credentials["Password"],
                                               credentials["playpath"])
     # fill in ffmpeg
-    ffmpegCommand = FFMPEG_TEMPLATE_TEST.format(videofile, filledRTMP)
+    ffmpegCommand = FFMPEG_TEMPLATE.format(videofile, filledRTMP)
     # connect to docker client
     if engine is None:
         client = docker.from_env()
     else:
         client = engine
-    # start container
-    contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
-    return contID
+    try:
+        contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap)
+    except docker.errors.APIError:
+        showerror("Erro", "Docker is not ready/installed!")
+        return None
+    else:
+        return contID
 
 
 def startTestContainer(frame, engine=None):
@@ -195,7 +215,8 @@ def startTestContainer(frame, engine=None):
         showinfo("Error", "A stream is already running!")
     else:
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
-        setStream(frame, "grey", "Waiting")
+        if frame.container is not None:
+            setStream(frame, "grey", "Waiting")
 
 
 def stopTestContainer(frame):
@@ -284,8 +305,10 @@ def checkStream(frame):
                     setStream(frame, "yellow", "Inactivate")
                     frame.streamActive = False  # reset stream active flag
                     showinfo("Info", "Stream ended succesfully!")
+                    frame.container = None
             else:  # just started
                 setStream(frame, "green", "-/-")
+                print(frame.container.logs())
                 # get bitrate
                 output = next(parseContainerOutput(frame.container))
                 # set stream Ok
@@ -348,20 +371,27 @@ def drawConfigGrid(window):
 
 def checkRightTime(frame):
     """checks whether it is time to stream."""
+    if len(frame.schedule) == 0: # no more streams to stream
+        return None
     if not frame.streamActive:
         # check the next stream to start
         nextRow = next(frame.schedule.iterrows())[1]
         time = nextRow["Date/Time"]
         videoFile = nextRow["File"]
+        # convert to target path in container
+        targetPath = f"/vids/{Path(videoFile).name}"
         # check whether it is time to start
         now = frame.nowDT
-        difference = datetime.timedelta(minutes=1)
-        print(f"Differece is: {np.abs(now - time)}")
+        difference = datetime.timedelta(minutes=10)
+        print(f"Difference is: {np.abs(now - time)}")
         if np.abs(now - time) < difference:
-            frame.container = dispatch_stream(videoFile, frame.credentials)
-            showinfo("Start", f"Stream start: {videoFile.name} at {time}")
-            # set stream activate to true
-            frame.straeamActive = True
-            # pluck the row from the schedule
+            frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
+            if frame.container is not None:
+                showinfo("Start", f"Stream start: {Path(videoFile).name} at {time}")
+                # set stream activate to true
+                frame.streamActive = True
+            else:
+                showerror("Error", "Error starting stream. Docker is not ready/installed")
+            # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
     frame.after(1000, checkRightTime, frame)
