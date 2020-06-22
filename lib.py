@@ -11,7 +11,7 @@ from tkinter.messagebox import showinfo
 
 RTMPSETTINGS_TEMPLATE = ("'{} "
                          "flashver=FMLE/3.020(compatible;20FMSc/1.0)"
-                         " live=true pubUser={} pubPasswd={} playpath=dclive_1_150@122185'")
+                         " live=true pubUser={} pubPasswd={} playpath={}'")
 
 FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
                         -f lavfi\
