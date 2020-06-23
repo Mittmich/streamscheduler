@@ -42,13 +42,13 @@ class Window(tkinter.Frame):
         # added "file" to our menu
         menu.add_cascade(label="File", menu=file)
         # add test menu
-        test = tkinter.Menu(menu)
-        test.add_command(label="Test OK Stream", command=partial(lib.setStream, frame=self, color="green", rate="1000kbit/s"))
-        test.add_command(label="Test BAD Stream", command=partial(lib.setStream, frame=self, color="red", rate="-/-"))
-        test.add_command(label="Test Inactivate Stream", command=partial(lib.setStream, frame=self, color="yellow", rate="Inactive"))
-        test.add_command(label="Start Test Containter", command=partial(lib.startTestContainer, self))
-        test.add_command(label="Stop Test Containter", command=partial(lib.stopTestContainer, self))
-        menu.add_cascade(label="Test", menu=test)
+        #test = tkinter.Menu(menu)
+        #test.add_command(label="Test OK Stream", command=partial(lib.setStream, frame=self, color="green", rate="1000kbit/s"))
+        #test.add_command(label="Test BAD Stream", command=partial(lib.setStream, frame=self, color="red", rate="-/-"))
+        #test.add_command(label="Test Inactivate Stream", command=partial(lib.setStream, frame=self, color="yellow", rate="Inactive"))
+        #test.add_command(label="Start Test Containter", command=partial(lib.startTestContainer, self))
+        #test.add_command(label="Stop Test Containter", command=partial(lib.stopTestContainer, self))
+        #menu.add_cascade(label="Test", menu=test)
         # add Containers
         containers = tkinter.Menu(menu)
         containers.add_command(label="Stop all containers", command=partial(lib.stopAllContainers, imageName=self.imageName, frame=self))
