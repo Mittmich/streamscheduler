@@ -70,7 +70,15 @@ def check_config_timing(df):
 
 def check_config_format(df):
     """Checks whether config entries are valid"""
-    # TODO: Check same videodirectory
+    try:
+        dirs = []
+        for row in df.iterrows():
+            dirs.append(Path(row[1]["File"]).parent)
+            print(dirs)
+        assert all([x == dirs[0] for x in dirs])
+    except AssertionError:
+        showinfo("Error", "Video files are not all in the same directory!")
+        return False
     # check datatypes
     try:
         for row in df.iterrows():
@@ -356,7 +364,6 @@ def checkStream(frame):
                 # check whether there is a failure
                 failed = parseFailure(frame.container)
                 if failed:  # failure
-                    setStream(frame, "red", "-/-")
                     showerror("Error", "Stream failed!")
                     frame.streamActive = False  # reset stream active flag
                     frame.container = None  # reset container
