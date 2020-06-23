@@ -8,7 +8,7 @@ from functools import partial
 
 
 # TestCases
-
+# TODO: switch off logging
 
 class TestGui(unittest.TestCase):
     def test_drawconfigGrid(self):
@@ -18,6 +18,20 @@ class TestGui(unittest.TestCase):
         self.assertEqual(len(mockframe.grid["grid"]), 10)
         for i in range(10):
             self.assertEqual(len(mockframe.grid["grid"][i]), 2)
+
+    def test_askExit(self):
+        # make mockfraem
+        mockframe = testlib.mockFrame()
+        mockroot = testlib.mockRoot()
+        # save old askyesno
+        oldAskYesno = lib.askyesno
+        # monkey patch in alwasy true
+        lib.askyesno = testlib.yessayer
+        # set stream to active
+        mockframe.streamActive = True
+        destroyCall = partial(lib.askExit, frame=mockframe, root=mockroot)
+        self.assertRaises(testlib.RootDestroyedException, destroyCall)
+        
 
 
 class TestParse(unittest.TestCase):
@@ -82,6 +96,14 @@ class TestParse(unittest.TestCase):
         badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badVideoDir.xlsx")
         self.assertRaises(AssertionError, badCall)
 
+    def test_parseFailure(self):
+        badContainer1 = testlib.mockContainer(b"I am a failure!")
+        self.assertTrue(lib.parseFailure(badContainer1))
+        badContainer2 = testlib.mockContainer(b"Everything is an error..")
+        self.assertTrue(lib.parseFailure(badContainer2))
+        badContainer3 = testlib.mockContainer(b"Not found...")
+        self.assertTrue(lib.parseFailure(badContainer3))
+
 
 class TestStream(unittest.TestCase):
     def setUp(self):
@@ -96,7 +118,7 @@ class TestStream(unittest.TestCase):
         self.engine = testlib.mockEngine()
 
     def test_dispatch_test_stream(self):
-        cont = lib.dispatch_test_stream(self.credentials, self.engine)
+        lib.dispatch_test_stream(self.credentials, self.engine)
         self.assertEqual(len(self.engine.containers), 1)
 
     def test_startTestContainer(self):

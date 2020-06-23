@@ -183,7 +183,7 @@ def parseFailure(container):
     """Check if container has failed.
     This is very crude!"""
     check = container.logs().decode()
-    if ("error" in check) or ("failure" in check) or ("not found" in check):
+    if ("error" in check.lower()) or ("failure" in check.lower()) or ("not found" in check.lower()):
         # LOGGING
         logging.error(f"Stream Failed! With the following line {check}")
         return True
