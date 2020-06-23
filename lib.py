@@ -8,9 +8,9 @@ import tkinter
 from tkinter.messagebox import showerror, showinfo
 import pathlib
 import numpy as np
+import shutil
 
 # TODO: Add something that prunes past streams (It could happen that a stream goes on past the difference of the next)
-# TODO: Think about organizing everything that handles streams into a single thing that can be put into an event queue
 # TODO: ADD logging capabilities
 
 # define global variables
@@ -167,27 +167,38 @@ def draw_config(window, loadedFrame):
 
 
 def checkDocker(imageName):
-    """Checks if docker is installed and 
+    """Checks if docker is installed and
     whether the right container is available"""
+    result = shutil.which("docker")
+    if result is None:
+        showerror("error", "Docker is not installed!")
+        return
     # checker whether docker client is reachable
     client = docker.from_env()
     try:
         client.version()
     except BaseException:
-        showerror("error", "Docker is not running or not installed!")
+        showerror("error", "Docker is not running!")
         return
     # check whether image is installed
     try:
         client.images.get(imageName)
     except docker.errors.ImageNotFound:
         showerror("Error", f"{imageName} not found in docker.images!")
+    if countImages(imageName) != 0:
+        showerror("Error", "Other containers with the same image are running!\n Please stop the containers.")
 
+
+def countImages(imageName):
+    client = docker.from_env()
+    containerList = client.containers.list()
+    count = 0
+    for cont in containerList:
+        if imageName in str(cont.image):
+            count += 1
+    return count
 
 # Streaming related functions
-
-
-def checkMatch(streamQueue, currentTime):
-    """Checks whether a stream needs to be started"""
 
 
 def dispatch_test_stream(credentials, engine=None):
@@ -247,18 +258,35 @@ def startTestContainer(frame, engine=None):
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
         if frame.container is not None:
             setStream(frame, "grey", "Waiting")
+            frame.streamActive = True
 
 
 def stopTestContainer(frame):
     if frame.container is not None:
         frame.container.stop()
         frame.container = None
+        frame.streamActive = False
     else:
         showinfo("Error", "No container is running!")
         return
     client = docker.from_env()
-    if len(client.containers.list()) == 0:
+    if countImages(frame.imageName) == 0:
         setStream(frame, "yellow", "Incative")
+
+
+def stopAllContainers(frame, imageName):
+    """stops all running docker containers
+    with the specified image name."""
+    frame.streamActive = False
+    client = docker.from_env()
+    containers = client.containers.list()
+    if len(containers) == 0:
+        showinfo("No containers", "No containers are running!")
+    else:
+        for cont in containers:
+            if imageName in str(cont.image):
+                cont.stop()
+        showinfo("Stopped", "All containers stopped!")
 
 # gui-related functions
 
@@ -272,7 +300,6 @@ def createTimeWidget(frame):
     frame.now = tkinter.StringVar()
     # Title
     frame.title = tkinter.Label(frameW, text="Current Time:", font=('Helvetica', 12))
-    frame.title.pack()
     # system time
     frame.time = tkinter.Label(frameW, font=('Helvetica', 8))
     frame.time.pack()
@@ -353,7 +380,6 @@ def checkStream(frame):
             # set stream Ok
             if output is not None:
                 setStream(frame, "green", output)
-    frame.after(1000, checkStream, frame)
 
 
 def setStream(frame, color, rate):
@@ -403,6 +429,8 @@ def drawConfigGrid(window):
 
 def checkRightTime(frame):
     """checks whether it is time to stream."""
+    if frame.schedule is None:  # not schedule loaded
+        return
     if len(frame.schedule) == 0:  # no more streams to stream
         return None
     if not frame.streamActive:
@@ -428,4 +456,14 @@ def checkRightTime(frame):
             frame.schedule = frame.schedule.iloc[1:, :]
             # redraw config
             draw_config(frame, frame.schedule)
-    frame.after(1000, checkRightTime, frame)
+
+
+def checkStreamEvents(frame):
+    """Main event that checks all
+    stream related things"""
+    # check whether stream needs to be started
+    checkRightTime(frame)
+    # check stream status
+    checkStream(frame)
+    # schedule next stream
+    frame.after(1000, checkStreamEvents, frame)

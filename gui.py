@@ -23,6 +23,8 @@ class Window(tkinter.Frame):
         self.credentials = None
         self.container = None
         self.streamActive = False
+        self.imageName = "ffmpeg:1.0"
+        self.schedule = None
         # allowing the widget to take the full space of the root window
         self.pack(fill="both", expand=1)
         # creating a menu instance
@@ -45,14 +47,18 @@ class Window(tkinter.Frame):
         test.add_command(label="Start Test Containter", command=partial(lib.startTestContainer, self))
         test.add_command(label="Stop Test Containter", command=partial(lib.stopTestContainer, self))
         menu.add_cascade(label="Test", menu=test)
+        # add Containers
+        containers = tkinter.Menu(menu)
+        containers.add_command(label="Stop all containers", command=partial(lib.stopAllContainers, imageName=self.imageName, frame=self))
+        menu.add_cascade(label="Containers", menu=containers)
         # configure grid
         for i in range(2):
                 self.columnconfigure(i, weight=1, minsize=25)
                 self.rowconfigure(i, weight=1, minsize=25)
         # check docker
-        lib.checkDocker("ffmpeg:1.0")
-        # initial call to checkstream
-        lib.checkStream(self)
+        lib.checkDocker(self.imageName)
+        # initial call to put checking stream events in the queue
+        lib.checkStreamEvents(self)
 
     def client_exit(self):
         exit()
