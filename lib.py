@@ -464,6 +464,17 @@ def checkRightTime(frame):
             # redraw config
             draw_config(frame, frame.schedule)
 
+def checkPastStream(frame):
+    """Gets rid of streams that are in the past.
+    This can happen if two streams are scheduled 
+    right after each after and the first one takes longer
+    than the difference."""
+    if frame.streamActive:
+        oldLength = len(frame.schedule)
+        frame.schedule = frame.schedule.loc[frame.schedule["Date/Time"] > frame.nowDT, :]
+        if oldLength != len(frame.schedule):
+            draw_config(frame, frame.schedule)
+
 
 def checkStreamEvents(frame):
     """Main event that checks all
@@ -472,5 +483,7 @@ def checkStreamEvents(frame):
     checkRightTime(frame)
     # check stream status
     checkStream(frame)
+    # check past stream
+    checkPastStream(frame)
     # schedule next stream
     frame.after(1000, checkStreamEvents, frame)
