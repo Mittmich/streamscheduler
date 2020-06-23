@@ -3,6 +3,8 @@ import tkinter
 import datetime
 import pandas as pd
 
+# mock docker
+
 class mockContainer():
     def __init__(self, log=None):
         self.log = log
@@ -63,3 +65,8 @@ class mockEngine():
         self.containers = mockContainers()
         self.containers.engine = self
 
+# misc functions
+
+
+def raiseAssertion(*args, **kwargs):
+    raise AssertionError

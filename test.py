@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import testlib
 from pathlib import Path
+from functools import partial
 
 
 # TestCases
@@ -38,6 +39,8 @@ class TestParse(unittest.TestCase):
         self.mockframe = testlib.mockFrame()
         # draw grid onto mockFrame
         lib.drawConfigGrid(self.mockframe)
+        # monkey patch lib.showerror so that I can catch to result
+        lib.showerror = testlib.raiseAssertion
 
     def test_parseContainerOutput(self):
         # test no bitrate
@@ -48,7 +51,6 @@ class TestParse(unittest.TestCase):
         self.assertEqual(result, "920.3kbits/s")
 
     def test_loadconfig(self):
-        # TODO: find a way to not prune past events in these tests
         lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
         self.assertEqual(self.mockframe.credentials, self.goodCredentials)
@@ -60,6 +62,25 @@ class TestParse(unittest.TestCase):
             self.assertEqual(Path(self.mockframe.schedule.iloc[i, 0]).name, tempFile)
             tempDateTime = pd.Timestamp(self.mockframe.grid["grid"][i][1].get())
             self.assertEqual(self.mockframe.schedule.iloc[i, 1], tempDateTime)
+
+    def test_checkConfigTiming(self):
+        # bad example
+        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badTiming.xlsx")
+        self.assertRaises(AssertionError, badCall)
+        # good example
+        goodCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
+        goodCall()
+
+    def test_config_format(self):
+        # bad example - bad datatypes
+        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badDtypes.xlsx")
+        self.assertRaises(AssertionError, badCall)
+        # bad example - badfiles
+        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badfiles.xlsx")
+        self.assertRaises(AssertionError, badCall)
+        # bad example - bad videodirs
+        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badVideoDir.xlsx")
+        self.assertRaises(AssertionError, badCall)
 
 
 class TestStream(unittest.TestCase):
