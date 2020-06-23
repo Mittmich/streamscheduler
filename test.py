@@ -5,9 +5,8 @@ import lib
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import tkinter
-import random
 
-from lib import startTestContainer, stopTestContainer
+
 # helper classes
 
 
@@ -139,13 +138,13 @@ class TestStream(unittest.TestCase):
         self.assertEqual(len(self.engine.containers), 1)
 
     def test_startTestContainer(self):
-        startTestContainer(self.mockframe, self.engine)
+        lib.startTestContainer(self.mockframe, self.engine)
         self.assertEqual(len(self.engine.containers), 1)
     
     def test_start_stopTestContainer(self):
-        startTestContainer(self.mockframe, self.engine)
+        lib.startTestContainer(self.mockframe, self.engine)
         self.assertEqual(len(self.engine.containers), 1)
-        stopTestContainer(self.mockframe)
+        lib.stopTestContainer(self.mockframe)
         self.assertEqual(len(self.engine.containers), 0)
 
 
