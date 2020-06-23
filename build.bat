@@ -1,0 +1,1 @@
+pyinstaller --hidden-import xldr --hidden-import pkg_resources.py2_warn --onedir --noconfirm .\gui.py
