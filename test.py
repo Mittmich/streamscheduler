@@ -36,6 +36,7 @@ class mockFrame(tkinter.Frame):
         self.streamSpeed = tkinter.StringVar()
         self.nowDT = datetime.datetime(year=1900, month=12, day=5)
         self.streamActive = True
+        self.imageName = "asdf"
 
     def after(*args):
         """Override after method to avoid repeated calling"""
