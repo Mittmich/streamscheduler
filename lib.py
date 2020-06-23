@@ -9,6 +9,10 @@ from tkinter.messagebox import showerror, showinfo
 import pathlib
 import numpy as np
 
+# TODO: Add something that prunes past streams (It could happen that a stream goes on past the difference of the next)
+# TODO: Think about organizing everything that handles streams into a single thing that can be put into an event queue
+# TODO: ADD logging capabilities
+
 # define global variables
 
 RTMPSETTINGS_TEMPLATE = ("'{} "
@@ -146,13 +150,17 @@ def parseFailure(container):
 
 def draw_config(window, loadedFrame):
     # draw elements
-    index = 0
+    index = None
     for index, row in enumerate(loadedFrame.head(n=10).iterrows()):
         # only show filename
         filePath = pathlib.Path(row[1]["File"])
         window.grid["grid"][index][0].set(filePath.name)
         window.grid["grid"][index][1].set(row[1]["Date/Time"])
-    if index < 9:  # Redraw blanks if less entries
+    if index is None:
+        for i in range(0, 10):
+            window.grid["grid"][i][0].set(" ".join(["-"] * 20))
+            window.grid["grid"][i][1].set(" ".join(["-"] * 20))
+    elif index < 9:  # Redraw blanks if less entries
         for i in range(index + 1, 10):
             window.grid["grid"][i][0].set(" ".join(["-"] * 20))
             window.grid["grid"][i][1].set(" ".join(["-"] * 20))
@@ -190,7 +198,7 @@ def dispatch_test_stream(credentials, engine=None):
 
 def dispatch_stream(videofile, credentials, pathmap, engine=None):
     """Starts streaming via ffmpeg.
-    Returns subprocess.Popen instance."""
+    Returns docker container object."""
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
                                               credentials["User"], credentials["Password"],
@@ -388,7 +396,7 @@ def checkRightTime(frame):
         targetPath = f"/vids/{Path(videoFile).name}"
         # check whether it is time to start
         now = frame.nowDT
-        difference = datetime.timedelta(minutes=2)
+        difference = datetime.timedelta(seconds=20)
         print(f"Difference is: {np.abs(now - time)}")
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
@@ -403,5 +411,3 @@ def checkRightTime(frame):
             # redraw config
             draw_config(frame, frame.schedule)
     frame.after(1000, checkRightTime, frame)
-
-# TODO: Add something that prunes past streams (It could happen that a stream goes on past the difference of the next)
