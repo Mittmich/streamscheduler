@@ -1,5 +1,5 @@
 import tkinter
-from lib import load_config, createTimeWidget, createStatusWidget, setStream, startTestContainer, stopTestContainer, drawConfigGrid, checkStream
+import lib
 from functools import partial
 
 
@@ -17,9 +17,9 @@ class Window(tkinter.Frame):
         # changing the title of our master widget
         self.master.title("FGO Stream Scheduler")
         # set up widgets
-        createTimeWidget(self)
-        createStatusWidget(self)
-        drawConfigGrid(self)
+        lib.createTimeWidget(self)
+        lib.createStatusWidget(self)
+        lib.drawConfigGrid(self)
         # set up parameter variables
         self.credentials = None
         self.container = None
@@ -35,23 +35,23 @@ class Window(tkinter.Frame):
         # command it runs on event is client_exit
         file.add_command(label="Exit", command=self.client_exit)
         # add load config command
-        file.add_command(label="Load config file", command=partial(load_config, self))
+        file.add_command(label="Load config file", command=partial(lib.load_config, self))
         # added "file" to our menu
         menu.add_cascade(label="File", menu=file)
         # add test menu
         test = tkinter.Menu(menu)
-        test.add_command(label="Test OK Stream", command=partial(setStream, frame=self, color="green", rate="1000kbit/s"))
-        test.add_command(label="Test BAD Stream", command=partial(setStream, frame=self, color="red", rate="-/-"))
-        test.add_command(label="Test Inactivate Stream", command=partial(setStream, frame=self, color="yellow", rate="Inactive"))
-        test.add_command(label="Start Test Containter", command=partial(startTestContainer, self))
-        test.add_command(label="Stop Test Containter", command=partial(stopTestContainer, self))
+        test.add_command(label="Test OK Stream", command=partial(lib.setStream, frame=self, color="green", rate="1000kbit/s"))
+        test.add_command(label="Test BAD Stream", command=partial(lib.setStream, frame=self, color="red", rate="-/-"))
+        test.add_command(label="Test Inactivate Stream", command=partial(lib.setStream, frame=self, color="yellow", rate="Inactive"))
+        test.add_command(label="Start Test Containter", command=partial(lib.startTestContainer, self))
+        test.add_command(label="Stop Test Containter", command=partial(lib.stopTestContainer, self))
         menu.add_cascade(label="Test", menu=test)
         # configure grid
         for i in range(2):
                 self.columnconfigure(i, weight=1, minsize=25)
                 self.rowconfigure(i, weight=1, minsize=25)
         # initial call to checkstream
-        checkStream(self)
+        lib.checkStream(self)
 
     def client_exit(self):
         exit()
