@@ -6,7 +6,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import tkinter
 
-
+# TODO make mock tkiner and docker to unify this
 # helper classes
 
 
