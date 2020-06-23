@@ -10,7 +10,6 @@ import pathlib
 import numpy as np
 import shutil
 
-# TODO: Add something that prunes past streams (It could happen that a stream goes on past the difference of the next)
 # TODO: ADD logging capabilities
 
 # define global variables
@@ -277,7 +276,6 @@ def stopTestContainer(frame):
     else:
         showinfo("Error", "No container is running!")
         return
-    client = docker.from_env()
     if countImages(frame.imageName) == 0:
         setStream(frame, "yellow", "Incative")
 
@@ -464,9 +462,10 @@ def checkRightTime(frame):
             # redraw config
             draw_config(frame, frame.schedule)
 
+
 def checkPastStream(frame):
     """Gets rid of streams that are in the past.
-    This can happen if two streams are scheduled 
+    This can happen if two streams are scheduled
     right after each after and the first one takes longer
     than the difference."""
     if frame.streamActive:
