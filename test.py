@@ -1,10 +1,10 @@
-from typing import Container
 import unittest
-from unittest.mock import patch
 import lib
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import tkinter
+import datetime
+from pathlib import Path
 
 # TODO make mock tkiner and docker to unify this
 # helper classes
@@ -34,6 +34,8 @@ class mockFrame(tkinter.Frame):
         self.status = tkinter.StringVar()
         self.lbl_StreamSpeed = tkinter.Label(self)
         self.streamSpeed = tkinter.StringVar()
+        self.nowDT = datetime.datetime(year=1900, month=12, day=5)
+        self.streamActive = True
 
     def after(*args):
         """Override after method to avoid repeated calling"""
@@ -88,10 +90,12 @@ class TestParse(unittest.TestCase):
                                            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
                                            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
         self.badContainer = mockContainer(b"press [q] press [h]")
-        self.goodConfig = pd.DataFrame({"File": ["test.mp4", "test2.mp4", "test4.mp4"],
-                                        "Date/Time": [pd.Timestamp("2020-06-21 12:00:00"),
-                                                      pd.Timestamp("2020-06-22 13:00:00"),
-                                                      pd.Timestamp("2021-07-23 14:00:00")]})
+        self.goodConfig = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                                 "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                                 "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                        "Date/Time": [pd.Timestamp("2025-06-21 12:00:00"),
+                                                      pd.Timestamp("2025-06-22 13:00:00"),
+                                                      pd.Timestamp("2025-07-23 14:00:00")]})
         self.goodCredentials = {"User": 12345, "Password": 678910,
                                 "rtmp-URL": "rtmp://i.amagood.server",
                                 "playpath": "dclive_0_1@2345"}
@@ -108,15 +112,16 @@ class TestParse(unittest.TestCase):
         self.assertEqual(result, "920.3kbits/s")
 
     def test_loadconfig(self):
-        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
+        # TODO: find a way to not prune past events in these tests
+        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
         self.assertEqual(self.mockframe.credentials, self.goodCredentials)
 
     def test_drawconfig(self):
-        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock.xlsx")
+        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
         for i in range(len(self.mockframe.schedule)):
             tempFile = self.mockframe.grid["grid"][i][0].get()
-            self.assertEqual(self.mockframe.schedule.iloc[i, 0], tempFile)
+            self.assertEqual(Path(self.mockframe.schedule.iloc[i, 0]).name, tempFile)
             tempDateTime = pd.Timestamp(self.mockframe.grid["grid"][i][1].get())
             self.assertEqual(self.mockframe.schedule.iloc[i, 1], tempDateTime)
 
@@ -140,7 +145,7 @@ class TestStream(unittest.TestCase):
     def test_startTestContainer(self):
         lib.startTestContainer(self.mockframe, self.engine)
         self.assertEqual(len(self.engine.containers), 1)
-    
+
     def test_start_stopTestContainer(self):
         lib.startTestContainer(self.mockframe, self.engine)
         self.assertEqual(len(self.engine.containers), 1)
