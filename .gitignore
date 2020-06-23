@@ -5,3 +5,6 @@ __pycache__/*
 test_files_key/*
 ~$*
 *.mp4
+build/*
+dist/*
+*.spec
