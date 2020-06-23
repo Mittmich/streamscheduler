@@ -73,7 +73,6 @@ def check_config_format(df):
         dirs = []
         for row in df.iterrows():
             dirs.append(Path(row[1]["File"]).parent)
-            print(dirs)
         assert all([x == dirs[0] for x in dirs])
     except AssertionError:
         showinfo("Error", "Video files are not all in the same directory!")
@@ -301,11 +300,11 @@ def stopAllContainers(frame, imageName):
 
 
 def createTimeWidget(frame):
-    # TODO: add time till next stream
     frameW = tkinter.Frame(frame)
     frame.now = tkinter.StringVar()
     # Title
-    frame.title = tkinter.Label(frameW, text="Current Time:", font=('Helvetica', 12))
+    frame.title = tkinter.Label(frameW, text="Current Time | Time to stream:", font=('Helvetica', 12))
+    frame.title.pack()
     # system time
     frame.time = tkinter.Label(frameW, font=('Helvetica', 8))
     frame.time.pack()
@@ -317,7 +316,12 @@ def createTimeWidget(frame):
 
 def onUpdate(frame):
     # update displayed time
-    frame.now.set(currentTime())
+    if isinstance(frame.timeToStream, datetime.timedelta):
+        deltaString = str(frame.timeToStream).split(".")[0]
+    else:
+        deltaString = frame.timeToStream
+    setString = currentTime() + f" | {deltaString}"
+    frame.now.set(setString)
     # update internal time
     frame.nowDT = datetime.datetime.now()
     # schedule timer to call myself after 1 second
@@ -448,7 +452,7 @@ def checkRightTime(frame):
         # check whether it is time to start
         now = frame.nowDT
         difference = datetime.timedelta(seconds=20)
-        print(f"Difference is: {np.abs(now - time)}")
+        frame.timeToStream = np.abs(now - time)
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
             if frame.container is not None:

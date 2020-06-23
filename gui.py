@@ -14,16 +14,17 @@ class Window(tkinter.Frame):
     def init_window(self):
         # changing the title of our master widget
         self.master.title("FGO Stream Scheduler")
-        # set up widgets
-        lib.createTimeWidget(self)
-        lib.createStatusWidget(self)
-        lib.drawConfigGrid(self)
         # set up parameter variables
         self.credentials = None
         self.container = None
         self.streamActive = False
         self.imageName = "ffmpeg:1.0"
         self.schedule = None
+        self.timeToStream = "".join(["-"] * 8)
+        # set up widgets
+        lib.createTimeWidget(self)
+        lib.createStatusWidget(self)
+        lib.drawConfigGrid(self)
         # allowing the widget to take the full space of the root window
         self.pack(fill="both", expand=1)
         # creating a menu instance
