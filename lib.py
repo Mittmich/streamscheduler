@@ -1,4 +1,3 @@
-from functools import partial
 from pathlib import Path
 import datetime
 import docker
@@ -6,13 +5,11 @@ import re
 from tkinter import filedialog
 import pandas as pd
 import tkinter
-from tkinter.messagebox import showerror, showinfo
+from tkinter.messagebox import showerror, showinfo, askyesno
 import pathlib
 import numpy as np
 import shutil
 import logging
-
-# TODO: ADD logging capabilities
 
 # define global variables
 
@@ -53,7 +50,8 @@ FFMPEG_TEMPLATE = """ffmpeg -re\
 
 datestring = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 logFile = Path(f"C:/temp/{datestring}.log")
-logging.basicConfig(filename=logFile, level=logging.DEBUG)
+logging.basicConfig(format="LOGGING::%(levelname)s::%(asctime)s:    %(message)s", filename=logFile, level=logging.DEBUG,
+                    datefmt='%m/%d/%Y %I:%M:%S %p')
 
 # disable module loggers
 
@@ -69,9 +67,13 @@ def currentTime():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def initLogger(frame):
-    logging.basicConfig(filename=frame.logFile, level=logging.DEBUG)
-
+def askExit(frame, root):
+    if frame.streamActive:
+        if askyesno("Exit", "A Stream is running, do you want to exit?"):
+            root.destroy()
+        return
+    else:
+        root.destroy()
 
 # parsing related functions
 
@@ -85,7 +87,7 @@ def check_config_timing(df):
     try:
         assert not any(diff < target for diff in diffs)
     except AssertionError:
-        showinfo("Error", "Stream timepoints are closer together than 30 min!")
+        showerror("Error", "Stream timepoints are closer together than 30 min!")
 
 
 def check_config_format(df):
@@ -96,7 +98,7 @@ def check_config_format(df):
             dirs.append(Path(row[1]["File"]).parent)
         assert all([x == dirs[0] for x in dirs])
     except AssertionError:
-        showinfo("Error", "Video files are not all in the same directory!")
+        showerror("Error", "Video files are not all in the same directory!")
         return False
     # check datatypes
     try:
@@ -105,7 +107,7 @@ def check_config_format(df):
                 assert isinstance(row[1]["Time"], datetime.time)
                 assert isinstance(row[1]["File"], str)
     except AssertionError:
-        showinfo("Error", "Schedule does not have the right format/datatypes!")
+        showerror("Error", "Schedule does not have the right format/datatypes!")
         return False
     # check whether path to mp4 exists
     try:
@@ -113,7 +115,7 @@ def check_config_format(df):
             temp = pathlib.Path(fileP)
             assert temp.exists()
     except AssertionError:
-        showinfo("Error", "Video files do not exist!")
+        showerror("Error", "Video files do not exist!")
         return False
     return True
 
@@ -156,6 +158,7 @@ def load_config(frame, filepath=None):
         schedule = schedule.loc[schedule["Date/Time"] > frame.nowDT, :]
         if len(schedule) == 0:
             showerror("Error", "Only past events provided!")
+            logging.error("Only past events provided!")
         else:
             # load credentials
             credentials = pd.read_excel(filename, sheet_name="Credentials")
@@ -290,11 +293,11 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
 
 def startTestContainer(frame, engine=None):
     if frame.credentials is None:
-        showinfo("Error", "No credentials specified!")
+        showerror("Error", "No credentials specified!")
         logging.info("No credentials specified!")
         return
     if frame.container is not None:
-        showinfo("Error", "A stream is already running!")
+        showerror("Error", "A stream is already running!")
         logging.info("A stream is already running!")
     else:
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
@@ -309,7 +312,7 @@ def stopTestContainer(frame):
         frame.container = None
         frame.streamActive = False
     else:
-        showinfo("Error", "No container is running!")
+        showerror("Error", "No container is running!")
         logging.error("No container is running!")
         return
     if countImages(frame.imageName) == 0:
@@ -414,7 +417,8 @@ def checkStream(frame):
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactivate")
                     frame.streamActive = False  # reset stream active flag
-                    showinfo("Info", "Stream ended succesfully!")
+                    frame.after(0, showinfo, "Info", "Stream ended succesfully!")
+                    logging.info("Stream ended successfully!")
                     frame.container = None
             else:  # just started
                 setStream(frame, "green", "-/-")
@@ -500,12 +504,12 @@ def checkRightTime(frame):
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
             if frame.container is not None:
-                frame.after(10, partial(showinfo, title="Start", message=f"Stream start: {Path(videoFile).name} at {time}"))
+                frame.after(10, showinfo, "Start", f"Stream start: {Path(videoFile).name} at {time}")
                 logging.info("Stream started!")
                 # set stream activate to true
                 frame.streamActive = True
             else:
-                showerror("Error", "Error starting stream. Docker is not ready/installed.")
+                frame.after(10, showerror,"Error", "Error starting stream. Docker is not ready/installed.")
                 logging.error("Error starting stream. Docker is not ready/installed.")
             # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
