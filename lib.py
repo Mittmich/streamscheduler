@@ -371,7 +371,7 @@ def drawConfigGrid(window):
 
 def checkRightTime(frame):
     """checks whether it is time to stream."""
-    if len(frame.schedule) == 0: # no more streams to stream
+    if len(frame.schedule) == 0:  # no more streams to stream
         return None
     if not frame.streamActive:
         # check the next stream to start

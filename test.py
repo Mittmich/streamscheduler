@@ -153,6 +153,5 @@ class TestStream(unittest.TestCase):
         self.assertEqual(len(self.engine.containers), 0)
 
 
-
 if __name__ == '__main__':
     res = unittest.main(verbosity=3, exit=False)
