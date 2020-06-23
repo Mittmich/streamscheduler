@@ -11,6 +11,8 @@ import numpy as np
 import shutil
 import logging
 
+# TODO: Stop all containers upon exit!
+
 # define global variables
 
 RTMPSETTINGS_TEMPLATE = ("'{} "
