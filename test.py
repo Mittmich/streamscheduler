@@ -31,7 +31,7 @@ class TestGui(unittest.TestCase):
         mockframe.streamActive = True
         destroyCall = partial(lib.askExit, frame=mockframe, root=mockroot)
         self.assertRaises(testlib.RootDestroyedException, destroyCall)
-        
+
 
 
 class TestParse(unittest.TestCase):
