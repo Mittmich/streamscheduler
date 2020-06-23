@@ -72,5 +72,8 @@ class Window(tkinter.Frame):
 root = tkinter.Tk()
 root.geometry("600x400")
 app = Window(root)
+# close dialog
 root.protocol('WM_DELETE_WINDOW', partial(lib.askExit, app, root))
+# icon
+root.iconphoto(False, tkinter.PhotoImage(file='data\\cropped-FGHomeOffice-1.png'))
 root.mainloop()
