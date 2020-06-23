@@ -55,7 +55,7 @@ def currentTime():
     """Get current date and time"""
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# parsing realted functions
+# parsing related functions
 
 
 def check_config_timing(df):
@@ -164,6 +164,24 @@ def draw_config(window, loadedFrame):
         for i in range(index + 1, 10):
             window.grid["grid"][i][0].set(" ".join(["-"] * 20))
             window.grid["grid"][i][1].set(" ".join(["-"] * 20))
+
+
+def checkDocker(imageName):
+    """Checks if docker is installed and 
+    whether the right container is available"""
+    # checker whether docker client is reachable
+    client = docker.from_env()
+    try:
+        client.version()
+    except BaseException:
+        showerror("error", "Docker is not running or not installed!")
+        return
+    # check whether image is installed
+    try:
+        client.images.get(imageName)
+    except docker.errors.ImageNotFound:
+        showerror("Error", f"{imageName} not found in docker.images!")
+
 
 # Streaming related functions
 

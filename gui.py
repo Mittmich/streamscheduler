@@ -2,7 +2,6 @@ import tkinter
 import lib
 from functools import partial
 
-
 # define classes
 
 
@@ -50,6 +49,8 @@ class Window(tkinter.Frame):
         for i in range(2):
                 self.columnconfigure(i, weight=1, minsize=25)
                 self.rowconfigure(i, weight=1, minsize=25)
+        # check docker
+        lib.checkDocker("ffmpeg:1.0")
         # initial call to checkstream
         lib.checkStream(self)
 
