@@ -1,6 +1,7 @@
 import tkinter
 import lib
 from functools import partial
+import datetime
 
 # define classes
 
@@ -21,10 +22,12 @@ class Window(tkinter.Frame):
         self.imageName = "ffmpeg:1.0"
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
+        self.logFile = f"C:\\temp\\{datetime.datetime.now()}.log"
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)
         lib.drawConfigGrid(self)
+        lib.initLogger(self)
         # allowing the widget to take the full space of the root window
         self.pack(fill="both", expand=1)
         # creating a menu instance

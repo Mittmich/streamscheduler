@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 import datetime
 import docker
@@ -9,6 +10,7 @@ from tkinter.messagebox import showerror, showinfo
 import pathlib
 import numpy as np
 import shutil
+import logging
 
 # TODO: ADD logging capabilities
 
@@ -47,6 +49,18 @@ FFMPEG_TEMPLATE = """ffmpeg -re\
                         -pix_fmt yuv420p\
                         -f flv {}"""
 
+# set loggingpath
+
+datestring = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+logFile = Path(f"C:/temp/{datestring}.log")
+logging.basicConfig(filename=logFile, level=logging.DEBUG)
+
+# disable module loggers
+
+logging.getLogger("urllib3.connectionpool").disabled = True
+logging.getLogger("docker.utils.config").disabled = True
+logging.getLogger("docker.auth").disabled = True
+
 # misc
 
 
@@ -54,12 +68,19 @@ def currentTime():
     """Get current date and time"""
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
+def initLogger(frame):
+    logging.basicConfig(filename=frame.logFile, level=logging.DEBUG)
+
+
 # parsing related functions
 
 
 def check_config_timing(df):
     # check time difference
     diffs = pd.Series(np.diff(df["Date/Time"]))
+    # LOGGING
+    logging.debug(f"Time differences: {diffs}")
     target = datetime.timedelta(minutes=30)
     try:
         assert not any(diff < target for diff in diffs)
@@ -101,6 +122,8 @@ def parseContainerOutput(contID):
     """Parses container output"""
     while True:
         line = contID.logs(tail=1)
+        # LOGGING
+        logging.debug(f"Container Output is: {line}")
         if len(line.strip().decode().split(" ")) < 10:
             yield None
         else:
@@ -143,6 +166,8 @@ def load_config(frame, filepath=None):
             frame.schedule = schedule
             draw_config(frame, schedule)
             checkRightTime(frame)
+            # LOGGING
+            logging.debug("Config loaded succesfully")
 
 
 def parseFailure(container):
@@ -150,6 +175,8 @@ def parseFailure(container):
     This is very crude!"""
     check = container.logs().decode()
     if ("error" in check) or ("failure" in check) or ("not found" in check):
+        # LOGGING
+        logging.error(f"Stream Failed! with the following line {check}")
         return True
     return False
 
@@ -178,6 +205,7 @@ def checkDocker(imageName):
     result = shutil.which("docker")
     if result is None:
         showerror("error", "Docker is not installed!")
+        logging.error("Docker is not installed!")
         return
     # checker whether docker client is reachable
     client = docker.from_env()
@@ -185,14 +213,17 @@ def checkDocker(imageName):
         client.version()
     except BaseException:
         showerror("error", "Docker is not running!")
+        logging.error("Docker is not running!")
         return
     # check whether image is installed
     try:
         client.images.get(imageName)
     except docker.errors.ImageNotFound:
         showerror("Error", f"{imageName} not found in docker.images!")
+        logging.error(f"{imageName} not found in docker.images!")
     if countImages(imageName) != 0:
         showerror("Error", "Other containers with the same image are running!\n Please stop the containers.")
+        logging.error("Other containers with the same image are running!\n Please stop the containers.")
 
 
 def countImages(imageName):
@@ -226,6 +257,7 @@ def dispatch_test_stream(credentials, engine=None):
         contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
+        logging.error("Docker is not ready/installed!")
         return None
     else:
         return contID
@@ -249,17 +281,21 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
+        logging.error("Docker is not ready/installed")
         return None
     else:
+        logging.debug(f"Stream dispatched with contID {contID}")
         return contID
 
 
 def startTestContainer(frame, engine=None):
     if frame.credentials is None:
         showinfo("Error", "No credentials specified!")
+        logging.info("No credentials specified!")
         return
     if frame.container is not None:
         showinfo("Error", "A stream is already running!")
+        logging.info("A stream is already running!")
     else:
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
         if frame.container is not None:
@@ -274,6 +310,7 @@ def stopTestContainer(frame):
         frame.streamActive = False
     else:
         showinfo("Error", "No container is running!")
+        logging.error("No container is running!")
         return
     if countImages(frame.imageName) == 0:
         setStream(frame, "yellow", "Incative")
@@ -287,11 +324,13 @@ def stopAllContainers(frame, imageName):
     containers = client.containers.list()
     if len(containers) == 0:
         showinfo("No containers", "No containers are running!")
+        logging.info("No containers are running!")
     else:
         for cont in containers:
             if imageName in str(cont.image):
                 cont.stop()
         showinfo("Stopped", "All containers stopped!")
+        logging.info("All containers stopped!")
 
 # gui-related functions
 
@@ -312,6 +351,7 @@ def createTimeWidget(frame):
     # initial time display
     onUpdate(frame)
     frameW.grid(column=1, row=1, sticky="S")
+    logging.debug("Time widget created")
 
 
 def onUpdate(frame):
@@ -369,6 +409,8 @@ def checkStream(frame):
                     showerror("Error", "Stream failed!")
                     frame.streamActive = False  # reset stream active flag
                     frame.container = None  # reset container
+                    # LOGGING
+                    logging.error("Stream Failed!")
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactivate")
                     frame.streamActive = False  # reset stream active flag
@@ -376,7 +418,7 @@ def checkStream(frame):
                     frame.container = None
             else:  # just started
                 setStream(frame, "green", "-/-")
-                print(frame.container.logs())
+                logging.debug(frame.container.logs())
                 # get bitrate
                 output = next(parseContainerOutput(frame.container))
                 # set stream Ok
@@ -453,14 +495,18 @@ def checkRightTime(frame):
         now = frame.nowDT
         difference = datetime.timedelta(seconds=20)
         frame.timeToStream = np.abs(now - time)
+        logging.debug(f"Time to stream is: {frame.timeToStream}")
+        logging.debug(f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}")
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
             if frame.container is not None:
-                showinfo("Start", f"Stream start: {Path(videoFile).name} at {time}")
+                frame.after(10, partial(showinfo, title="Start", message=f"Stream start: {Path(videoFile).name} at {time}"))
+                logging.info("Stream started!")
                 # set stream activate to true
                 frame.streamActive = True
             else:
-                showerror("Error", "Error starting stream. Docker is not ready/installed")
+                showerror("Error", "Error starting stream. Docker is not ready/installed.")
+                logging.error("Error starting stream. Docker is not ready/installed.")
             # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
             # redraw config
