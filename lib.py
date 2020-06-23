@@ -146,12 +146,16 @@ def parseFailure(container):
 
 def draw_config(window, loadedFrame):
     # draw elements
+    index = 0
     for index, row in enumerate(loadedFrame.head(n=10).iterrows()):
         # only show filename
         filePath = pathlib.Path(row[1]["File"])
         window.grid["grid"][index][0].set(filePath.name)
         window.grid["grid"][index][1].set(row[1]["Date/Time"])
-
+    if index < 9:  # Redraw blanks if less entries
+        for i in range(index + 1, 10):
+            window.grid["grid"][i][0].set(" ".join(["-"] * 20))
+            window.grid["grid"][i][1].set(" ".join(["-"] * 20))
 
 # Streaming related functions
 
@@ -237,6 +241,7 @@ def stopTestContainer(frame):
 
 
 def createTimeWidget(frame):
+    # TODO: add time till next stream
     frameW = tkinter.Frame(frame)
     frame.now = tkinter.StringVar()
     # Title
@@ -301,6 +306,7 @@ def checkStream(frame):
                     setStream(frame, "red", "-/-")
                     showerror("Error", "Stream failed!")
                     frame.streamActive = False  # reset stream active flag
+                    frame.container = None  # reset container
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactivate")
                     frame.streamActive = False  # reset stream active flag
@@ -382,7 +388,7 @@ def checkRightTime(frame):
         targetPath = f"/vids/{Path(videoFile).name}"
         # check whether it is time to start
         now = frame.nowDT
-        difference = datetime.timedelta(minutes=10)
+        difference = datetime.timedelta(minutes=2)
         print(f"Difference is: {np.abs(now - time)}")
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
@@ -394,4 +400,8 @@ def checkRightTime(frame):
                 showerror("Error", "Error starting stream. Docker is not ready/installed")
             # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
+            # redraw config
+            draw_config(frame, frame.schedule)
     frame.after(1000, checkRightTime, frame)
+
+# TODO: Add something that prunes past streams (It could happen that a stream goes on past the difference of the next)
