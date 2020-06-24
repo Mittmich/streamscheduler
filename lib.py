@@ -11,7 +11,6 @@ import numpy as np
 import shutil
 import logging
 
-# TODO: Stop all containers upon exit!
 
 # define global variables
 
@@ -63,11 +62,8 @@ def currentTime():
 
 
 def askExit(frame, root):
-    if frame.streamActive:
-        if askyesno("Exit", "A Stream is running, do you want to exit?"):
-            root.destroy()
-        return
-    else:
+    if askyesno("Exit", "Do you really want to exit? All containers will be killed!"):
+        stopAllContainers(frame, frame.imageName)
         root.destroy()
 
 # parsing related functions
