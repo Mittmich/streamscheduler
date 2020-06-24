@@ -6,10 +6,6 @@ import testlib
 from pathlib import Path
 from functools import partial
 import logging
-import docker
-
-from testlib import mockContainer
-
 
 # TestCases
 
