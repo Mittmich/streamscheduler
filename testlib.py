@@ -41,6 +41,7 @@ class mockContainer():
         self.log = log
         self.index = None
         self.engine = None
+        self.call_ = None
 
     def logs(self, tail=1):
         return self.log
@@ -50,9 +51,10 @@ class mockContainer():
 
 
 class mockContainers():
-    def __init__(self):
+    def __init__(self, name="asdf"):
         self.containerList = []
         self.engine = None
+        self.image = name
 
     def list(self):
         return self.containerList

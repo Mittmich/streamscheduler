@@ -8,6 +8,8 @@ from functools import partial
 import logging
 import docker
 
+from testlib import mockContainer
+
 
 # TestCases
 
@@ -189,9 +191,10 @@ class TestDockers(unittest.TestCase):
         # 0 images
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=[]))
         self.assertEqual(lib.checkDocker("asdf"), 0)
-       # 2 images
+        # 2 images
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=["asdf", "asdf"]))
         self.assertEqual(lib.checkDocker("asdf"), 2)
+
 
 class TestStream(unittest.TestCase):
     def setUp(self):
@@ -220,10 +223,9 @@ class TestStream(unittest.TestCase):
         self.assertEqual(len(self.engine.containers), 0)
 
     def test_dispatch_Stream(self):
-        assert False
-
-    def test_stopAllContainers(self):
-        assert False
+        # test whether container is dispatched
+        lib.dispatch_stream("mockfile", credentials=self.credentials, pathmap="dummy", engine=self.engine)
+        self.assertEqual(len(self.engine.containers), 1)
 
 
 if __name__ == '__main__':
