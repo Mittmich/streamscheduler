@@ -2,6 +2,21 @@ import tkinter
 import lib
 from functools import partial
 import datetime
+from pathlib import Path
+import logging
+
+# set loggingpath
+
+datestring = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+logFile = Path(f"C:/temp/{datestring}.log")
+logging.basicConfig(format="LOGGING::%(levelname)s::%(asctime)s:    %(message)s", filename=logFile, level=logging.INFO,
+                    datefmt='%m/%d/%Y %I:%M:%S %p')
+
+# disable module loggers
+
+logging.getLogger("urllib3.connectionpool").disabled = True
+logging.getLogger("docker.utils.config").disabled = True
+logging.getLogger("docker.auth").disabled = True
 
 # define classes
 

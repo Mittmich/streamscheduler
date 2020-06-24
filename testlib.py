@@ -83,7 +83,3 @@ class mockEngine():
 
 def raiseAssertion(*args, **kwargs):
     raise AssertionError
-
-
-def yessayer(*args, **kwargs):
-    return True

@@ -5,10 +5,13 @@ from pandas.testing import assert_frame_equal
 import testlib
 from pathlib import Path
 from functools import partial
+import logging
 
 
 # TestCases
-# TODO: switch off logging
+
+# Switch off logging
+logging.getLogger("root").disabled = True
 
 class TestGui(unittest.TestCase):
     def test_drawconfigGrid(self):
@@ -24,14 +27,23 @@ class TestGui(unittest.TestCase):
         mockframe = testlib.mockFrame()
         mockroot = testlib.mockRoot()
         # save old askyesno
-        oldAskYesno = lib.askyesno
+        oldAskYesNo = lib.askyesno
         # monkey patch in alwasy true
-        lib.askyesno = testlib.yessayer
+        lib.askyesno = lambda x, y: True
         # set stream to active
         mockframe.streamActive = True
         destroyCall = partial(lib.askExit, frame=mockframe, root=mockroot)
         self.assertRaises(testlib.RootDestroyedException, destroyCall)
-
+        # set stream to inactive
+        lib.askyesno = lambda x, y: False
+        # set stream to active
+        mockframe.streamActive = True
+        destroyCall = partial(lib.askExit, frame=mockframe, root=mockroot)
+        # set stream to inactive
+        mockframe.streamActive = False
+        self.assertRaises(testlib.RootDestroyedException, destroyCall)
+        # restore old function
+        lib.askyesno = oldAskYesNo
 
 
 class TestParse(unittest.TestCase):

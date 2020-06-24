@@ -52,14 +52,7 @@ FFMPEG_TEMPLATE = """ffmpeg -re\
 
 datestring = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 logFile = Path(f"C:/temp/{datestring}.log")
-logging.basicConfig(format="LOGGING::%(levelname)s::%(asctime)s:    %(message)s", filename=logFile, level=logging.INFO,
-                    datefmt='%m/%d/%Y %I:%M:%S %p')
-
-# disable module loggers
-
-logging.getLogger("urllib3.connectionpool").disabled = True
-logging.getLogger("docker.utils.config").disabled = True
-logging.getLogger("docker.auth").disabled = True
+logger = logging.getLogger("lib")
 
 # misc
 
@@ -84,13 +77,13 @@ def check_config_timing(df):
     # check time difference
     diffs = pd.Series(np.diff(df["Date/Time"]))
     # LOGGING
-    logging.debug(f"Time differences: {diffs}")
+    logger.debug(f"Time differences: {diffs}")
     target = datetime.timedelta(minutes=30)
     try:
         assert not any(diff < target for diff in diffs)
     except AssertionError:
         showerror("Error", "Stream timepoints are closer together than 30 min!")
-        logging.error("Stream timepoints are closer together than 30 min!")
+        logger.error("Stream timepoints are closer together than 30 min!")
 
 
 def check_config_format(df):
@@ -102,7 +95,7 @@ def check_config_format(df):
         assert all([x == dirs[0] for x in dirs])
     except AssertionError:
         showerror("Error", "Video files are not all in the same directory!")
-        logging.error("Video files are not all in the same directory!")
+        logger.error("Video files are not all in the same directory!")
         return False
     # check datatypes
     try:
@@ -112,7 +105,7 @@ def check_config_format(df):
                 assert isinstance(row[1]["File"], str)
     except AssertionError:
         showerror("Error", "Schedule does not have the right format/datatypes!")
-        logging.error("Schedule does not have the right format/datatypes!")
+        logger.error("Schedule does not have the right format/datatypes!")
         return False
     # check whether path to mp4 exists
     try:
@@ -121,7 +114,7 @@ def check_config_format(df):
             assert temp.exists()
     except AssertionError:
         showerror("Error", "Video files do not exist!")
-        logging.error("Video files do not exist!")
+        logger.error("Video files do not exist!")
         return False
     return True
 
@@ -130,8 +123,8 @@ def parseContainerOutput(contID):
     """Parses container output"""
     while True:
         line = contID.logs(tail=1)
-        # LOGGING
-        logging.info(f"Container Output is: {line}")
+        # logger
+        logger.info(f"Container Output is: {line}")
         if len(line.strip().decode().split(" ")) < 10:
             yield None
         else:
@@ -164,7 +157,7 @@ def load_config(frame, filepath=None):
         schedule = schedule.loc[schedule["Date/Time"] > frame.nowDT, :]
         if len(schedule) == 0:
             showerror("Error", "Only past events provided!")
-            logging.error("Only past events provided!")
+            logger.error("Only past events provided!")
         else:
             # load credentials
             credentials = pd.read_excel(filename, sheet_name="Credentials")
@@ -175,8 +168,8 @@ def load_config(frame, filepath=None):
             frame.schedule = schedule
             draw_config(frame, schedule)
             checkRightTime(frame)
-            # LOGGING
-            logging.info("Config loaded succesfully")
+            # logger
+            logger.info("Config loaded succesfully")
 
 
 def parseFailure(container):
@@ -184,8 +177,8 @@ def parseFailure(container):
     This is very crude!"""
     check = container.logs().decode()
     if ("error" in check.lower()) or ("failure" in check.lower()) or ("not found" in check.lower()):
-        # LOGGING
-        logging.error(f"Stream Failed! With the following line {check}")
+        # logger
+        logger.error(f"Stream Failed! With the following line {check}")
         return True
     return False
 
@@ -214,7 +207,7 @@ def checkDocker(imageName):
     result = shutil.which("docker")
     if result is None:
         showerror("error", "Docker is not installed!")
-        logging.error("Docker is not installed!")
+        logger.error("Docker is not installed!")
         return
     # checker whether docker client is reachable
     client = docker.from_env()
@@ -222,17 +215,17 @@ def checkDocker(imageName):
         client.version()
     except BaseException:
         showerror("error", "Docker is not running!")
-        logging.error("Docker is not running!")
+        logger.error("Docker is not running!")
         return
     # check whether image is installed
     try:
         client.images.get(imageName)
     except docker.errors.ImageNotFound:
         showerror("Error", f"{imageName} not found in docker.images!")
-        logging.error(f"{imageName} not found in docker.images!")
+        logger.error(f"{imageName} not found in docker.images!")
     if countImages(imageName) != 0:
         showerror("Error", "Other containers with the same image are running!\n Please stop the containers.")
-        logging.error("Other containers with the same image are running!\n Please stop the containers.")
+        logger.error("Other containers with the same image are running!\n Please stop the containers.")
 
 
 def countImages(imageName):
@@ -266,7 +259,7 @@ def dispatch_test_stream(credentials, engine=None):
         contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
-        logging.error("Docker is not ready/installed!")
+        logger.error("Docker is not ready/installed!")
         return None
     else:
         return contID
@@ -290,21 +283,21 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
-        logging.error("Docker is not ready/installed")
+        logger.error("Docker is not ready/installed")
         return None
     else:
-        logging.debug(f"Stream dispatched with contID {contID}")
+        logger.debug(f"Stream dispatched with contID {contID}")
         return contID
 
 
 def startTestContainer(frame, engine=None):
     if frame.credentials is None:
         showerror("Error", "No credentials specified!")
-        logging.error("No credentials specified!")
+        logger.error("No credentials specified!")
         return
     if frame.container is not None:
         showerror("Error", "A stream is already running!")
-        logging.error("A stream is already running!")
+        logger.error("A stream is already running!")
     else:
         frame.container = dispatch_test_stream(frame.credentials, engine=engine)
         if frame.container is not None:
@@ -319,7 +312,7 @@ def stopTestContainer(frame):
         frame.streamActive = False
     else:
         showerror("Error", "No container is running!")
-        logging.error("No container is running!")
+        logger.error("No container is running!")
         return
     if countImages(frame.imageName) == 0:
         setStream(frame, "yellow", "Incative")
@@ -333,13 +326,13 @@ def stopAllContainers(frame, imageName):
     containers = client.containers.list()
     if len(containers) == 0:
         showinfo("No containers", "No containers are running!")
-        logging.info("No containers are running!")
+        logger.info("No containers are running!")
     else:
         for cont in containers:
             if imageName in str(cont.image):
                 cont.stop()
         showinfo("Stopped", "All containers stopped!")
-        logging.info("All containers stopped!")
+        logger.info("All containers stopped!")
 
 # gui-related functions
 
@@ -360,7 +353,7 @@ def createTimeWidget(frame):
     # initial time display
     onUpdate(frame)
     frameW.grid(column=1, row=1, sticky="S")
-    logging.debug("Time widget created")
+    logger.debug("Time widget created")
 
 
 def onUpdate(frame):
@@ -418,17 +411,17 @@ def checkStream(frame):
                     showerror("Error", "Stream failed!")
                     frame.streamActive = False  # reset stream active flag
                     frame.container = None  # reset container
-                    # LOGGING
-                    logging.error("Stream Failed!")
+                    # logger
+                    logger.error("Stream Failed!")
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactivate")
                     frame.streamActive = False  # reset stream active flag
                     frame.after(0, showinfo, "Info", "Stream ended succesfully!")
-                    logging.info("Stream ended successfully!")
+                    logger.info("Stream ended successfully!")
                     frame.container = None
             else:  # just started
                 setStream(frame, "green", "-/-")
-                logging.debug(frame.container.logs())
+                logger.debug(frame.container.logs())
                 # get bitrate
                 output = next(parseContainerOutput(frame.container))
                 # set stream Ok
@@ -505,18 +498,18 @@ def checkRightTime(frame):
         now = frame.nowDT
         difference = datetime.timedelta(seconds=20)
         frame.timeToStream = np.abs(now - time)
-        logging.debug(f"Time to stream is: {frame.timeToStream}")
-        logging.debug(f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}")
+        logger.debug(f"Time to stream is: {frame.timeToStream}")
+        logger.debug(f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}")
         if np.abs(now - time) < difference:
             frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
             if frame.container is not None:
                 frame.after(10, showinfo, "Start", f"Stream start: {Path(videoFile).name} at {time}")
-                logging.info("Stream started!")
+                logger.info("Stream started!")
                 # set stream activate to true
                 frame.streamActive = True
             else:
                 frame.after(10, showerror, "Error", "Error starting stream. Docker is not ready/installed.")
-                logging.error("Error starting stream. Docker is not ready/installed.")
+                logger.error("Error starting stream. Docker is not ready/installed.")
             # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
             # redraw config
