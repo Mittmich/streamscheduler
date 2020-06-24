@@ -321,7 +321,6 @@ def stopAllContainers(frame, imageName):
     client = docker.from_env()
     containers = client.containers.list()
     if len(containers) == 0:
-        showinfo("No containers", "No containers are running!")
         logger.info("No containers are running!")
     else:
         for cont in containers:
