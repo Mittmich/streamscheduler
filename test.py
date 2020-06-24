@@ -338,6 +338,7 @@ class TestDockers(unittest.TestCase):
         # setup things in a way that all tests of checkDocker will pass
         lib.shutil.which = lambda x: "asdf"  # this will make the call return something
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
+        self.oldCountImages = lib.countImages
         lib.countImages = lambda x: 0
 
     def setUp(self):
@@ -370,12 +371,14 @@ class TestDockers(unittest.TestCase):
         self.assertRaises(AssertionError, badCall)
 
     def test_countImages(self):
+        rightContainer = testlib.mockContainer(name="asdf")
+        lib.countImages = self.oldCountImages
         # 0 images
-        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=[]))
-        self.assertEqual(lib.checkDocker("asdf"), 0)
+        lib.docker.from_env = lambda: testlib.mockEngine(containers=[])
+        self.assertEqual(lib.countImages("asdf"), 0)
         # 2 images
-        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=["asdf", "asdf"]))
-        self.assertEqual(lib.checkDocker("asdf"), 2)
+        lib.docker.from_env = lambda: testlib.mockEngine(containers=[rightContainer, rightContainer])
+        self.assertEqual(lib.countImages("asdf"), 2)
 
 
 class TestStream(unittest.TestCase):

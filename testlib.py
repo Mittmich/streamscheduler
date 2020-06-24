@@ -43,11 +43,12 @@ class mockRoot():
 
 
 class mockContainer():
-    def __init__(self, log=None, status="created"):
+    def __init__(self, log=None, status="created", name="asdf"):
         self.log = log
         self.index = None
         self.engine = None
         self.status = status
+        self.image = name
 
     def logs(self, tail=1):
         return self.log
