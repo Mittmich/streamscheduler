@@ -8,8 +8,6 @@ from pathlib import Path
 from functools import partial
 import logging
 
-from testlib import mockContainer
-
 # TestCases
 
 # Switch off logging
@@ -34,7 +32,7 @@ class TestCheckStream(unittest.TestCase):
         has no valid bitrate output is correct."""
         # test whether nothing happens if container is none
         mockframe = testlib.mockFrame()
-        mockframe.container = mockContainer(status="running", log=b"asdf")
+        mockframe.container = testlib.mockContainer(status="running", log=b"asdf")
         # monkey patch onupdate
         lib.onUpdate = lambda x: 1
         lib.createStatusWidget(mockframe)
@@ -48,7 +46,7 @@ class TestCheckStream(unittest.TestCase):
         has no valid bitrate output is correct."""
         # test whether nothing happens if container is none
         mockframe = testlib.mockFrame()
-        mockframe.container = mockContainer(status="running", log=b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+        mockframe.container = testlib.mockContainer(status="running", log=b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
                                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
                                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
                                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
@@ -64,25 +62,32 @@ class TestCheckStream(unittest.TestCase):
         """Tests whether the reaction to a created container that
         is then the client.containers.list is correct"""
         mockframe = testlib.mockFrame()
-        mockframe.container = mockContainer(status="created", log=b"asdf")
+        mockframe.container = testlib.mockContainer(status="created", log=b"asdf")
         # monkey patch onupdate
+        oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda x: 1
         # monkeypatch client
+        oldClient = lib.docker.from_env
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(), containers=[mockframe.container])
         lib.createStatusWidget(mockframe)
         lib.checkStream(mockframe)
         self.assertEqual(mockframe.status.get(), "green")
         self.assertEqual(mockframe.streamActive, False)
         self.assertEqual(mockframe.lbl_StreamSpeed["text"], "-/-")
+        # undo monkeypatch
+        lib.onUpdate = oldOnUpdate
+        lib.docker.from_env = oldClient
 
     def test_checkStream_containerCreated_finished(self):
         """Check whether reaction to a container that has been created and
         finished succesfully is correct."""
         mockframe = testlib.mockFrame()
-        mockframe.container = mockContainer(status="created", log=b"asdf")
+        mockframe.container = testlib.mockContainer(status="created", log=b"asdf")
         # monkey patch onupdate
+        oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda x: 1
         # monkeypatch client
+        oldClient = lib.docker.from_env
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
         lib.createStatusWidget(mockframe)
         lib.checkStream(mockframe)
@@ -90,15 +95,20 @@ class TestCheckStream(unittest.TestCase):
         self.assertEqual(mockframe.streamActive, False)
         self.assertEqual(mockframe.lbl_StreamSpeed["text"], "Inactive")
         self.assertEqual(mockframe.container, None)
+        # undo monkeypatch
+        lib.onUpdate = oldOnUpdate
+        lib.docker.from_env = oldClient
 
     def test_checkStream_containerCreated_crashed(self):
         """Check whether reaction to a container that has been created and
         finished succesfully is correct."""
         mockframe = testlib.mockFrame()
-        mockframe.container = mockContainer(status="created", log=b"error")
+        mockframe.container = testlib.mockContainer(status="created", log=b"error")
         # monkey patch onupdate
+        oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda x: 1
         # monkeypatch client
+        oldClient = lib.docker.from_env
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
         lib.showerror = testlib.raiseAssertion
         lib.createStatusWidget(mockframe)
@@ -108,6 +118,9 @@ class TestCheckStream(unittest.TestCase):
         self.assertEqual(mockframe.streamActive, False)
         self.assertEqual(mockframe.lbl_StreamSpeed["text"], "Inactive")
         self.assertEqual(mockframe.container, None)
+        # undo monkeypatch
+        lib.onUpdate = oldOnUpdate
+        lib.docker.from_env = oldClient
 
 
 class TestCheckRightTime(unittest.TestCase):
@@ -116,10 +129,13 @@ class TestCheckRightTime(unittest.TestCase):
     def test_checkRightTime_noSchedule(self):
         mockframe = testlib.mockFrame()
         # monkeypatch dispatch stream
+        oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
         lib.checkRightTime(mockframe)  # should not raise AssertionError
         self.assertEqual(mockframe.container, None)
         self.assertEqual(mockframe.streamActive, False)
+        # undo monkeypatch
+        lib.dispatch_stream = oldDispatch
 
     def test_checkRightTime_StreamInFuture(self):
         mockframe = testlib.mockFrame()
@@ -133,10 +149,13 @@ class TestCheckRightTime(unittest.TestCase):
                                                           pd.Timestamp("2025-06-22 13:00:00"),
                                                           pd.Timestamp("2025-07-23 14:00:00")]})
         # monkeypatch dispatch stream
+        oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
         lib.checkRightTime(mockframe)  # should not raise AssertionError
         self.assertEqual(mockframe.container, None)
         self.assertEqual(mockframe.streamActive, False)
+        # undo monkeypatch
+        lib.dispatch_stream = oldDispatch
 
     def test_checkRightTime_StreamInPast(self):
         mockframe = testlib.mockFrame()
@@ -150,10 +169,13 @@ class TestCheckRightTime(unittest.TestCase):
                                                           pd.Timestamp("2009-06-22 13:00:00"),
                                                           pd.Timestamp("2009-07-23 14:00:00")]})
         # monkeypatch dispatch stream
+        oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
         lib.checkRightTime(mockframe)  # should not raise AssertionError
         self.assertEqual(mockframe.container, None)
         self.assertEqual(mockframe.streamActive, False)
+        # undo monkeypatch
+        lib.dispatch_stream = oldDispatch
 
     def test_checkRightTime_RightTime(self):
         mockframe = testlib.mockFrame()
@@ -167,12 +189,14 @@ class TestCheckRightTime(unittest.TestCase):
                                                           pd.Timestamp("2009-06-22 13:00:00"),
                                                           pd.Timestamp("2009-07-23 14:00:00")]})
         # monkeypatch dispatch stream
+        oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
         goodCall = partial(lib.checkRightTime, mockframe)
         self.assertRaises(AssertionError, goodCall)
         # second monkeypatch to check whether events afterwards happen correctly
         lib.dispatch_stream = lambda x, y, z: None
         mockframe.after = testlib.raiseAssertion  # this is called by the error dispatching functions
+        oldDrawConfig = lib.draw_config
         lib.draw_config = lambda x, y: None
         goodCall = partial(lib.checkRightTime, mockframe)
         self.assertRaises(AssertionError, goodCall)
@@ -181,18 +205,25 @@ class TestCheckRightTime(unittest.TestCase):
         lib.checkRightTime(mockframe)  # before the call only goes through to frame.after because assertion is raised there
         self.assertEqual(len(mockframe.schedule), 2)
         self.assertEqual(mockframe.streamActive, False)
+        # undo monkeypatch
+        lib.dispatch_stream = oldDispatch
+        lib.draw_config = oldDrawConfig
+
 
 class TestGui(unittest.TestCase):
 
     def test_createTimeWidget(self):
         mockframe = testlib.mockFrame()
         # monkey patch onupdate
+        oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda x: 1
         lib.createTimeWidget(mockframe)
         # check whether it is there
         self.assertTrue(hasattr(mockframe, "time_label"))
         self.assertTrue(hasattr(mockframe, "time_title"))
         self.assertTrue(hasattr(mockframe, "now"))
+        # undo monkey patch
+        lib.onUpdate = oldOnUpdate
 
     def test_onUpdate(self):
         pass
@@ -200,6 +231,7 @@ class TestGui(unittest.TestCase):
     def test_createStatusWidget(self):
         mockframe = testlib.mockFrame()
         # monkey patch onupdate
+        oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda x: 1
         lib.createStatusWidget(mockframe)
         # check whether it is there
@@ -208,6 +240,8 @@ class TestGui(unittest.TestCase):
         self.assertTrue(hasattr(mockframe, "status_title"))
         self.assertTrue(hasattr(mockframe, "rectl_status"))
         self.assertTrue(hasattr(mockframe, "lbl_StreamSpeed"))
+        # undo monkey patch
+        lib.onUpdate = oldOnUpdate
 
     def test_setStream(self):
         mockframe = testlib.mockFrame()
@@ -335,18 +369,20 @@ class TestDockers(unittest.TestCase):
         # setup things in a way that all tests of checkDocker will pass
         lib.shutil.which = lambda x: "asdf"  # this will make the call return something
         lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
-        self.oldCountImages = lib.countImages
         lib.countImages = lambda x: 0
 
-    def setUp(self):
-        self.makeGood()
-
     def test_checkDocker(self):
+        # save all functions that will be monkey patched here
+        oldWhich = lib.shutil.which
+        oldClient = lib.docker.from_env
+        oldCountImages = lib.countImages
+        oldShowerror = lib.showerror
         # check if everything passes
+        lib.showerror = testlib.raiseAssertion
+        self.makeGood()
         lib.checkDocker("ffmpeg:1.0")
         # simulate docker not installed
         lib.shutil.which = lambda x: None
-        lib.showerror = testlib.raiseAssertion
         badCall = partial(lib.checkDocker, "asdf")
         self.assertRaises(AssertionError, badCall)
         # reset to good version
@@ -366,16 +402,23 @@ class TestDockers(unittest.TestCase):
         lib.countImages = lambda x: 1
         badCall = partial(lib.checkDocker, "asdf")
         self.assertRaises(AssertionError, badCall)
+        # restore old funcitons
+        lib.countImages = oldCountImages
+        lib.docker.from_env = oldClient
+        lib.shutil.which = oldWhich
+        lib.showerror = oldShowerror
 
     def test_countImages(self):
         rightContainer = testlib.mockContainer(name="asdf")
-        lib.countImages = self.oldCountImages
         # 0 images
+        oldClient = lib.docker.from_env
         lib.docker.from_env = lambda: testlib.mockEngine(containers=[])
         self.assertEqual(lib.countImages("asdf"), 0)
         # 2 images
         lib.docker.from_env = lambda: testlib.mockEngine(containers=[rightContainer, rightContainer])
         self.assertEqual(lib.countImages("asdf"), 2)
+        # restore old client
+        lib.docker.from_env = oldClient
 
 
 class TestStream(unittest.TestCase):
