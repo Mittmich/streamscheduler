@@ -72,12 +72,15 @@ class mockContainers():
 
 
 class mockImages():
-    def __init__(self, good=True) -> None:
+    def __init__(self, good=True, imageList=None) -> None:
         self.good = good
+        self.imageList = None
 
     def get(self, imageName):
         if not self.good:
             raise docker.errors.ImageNotFound("asdf")
+        else:
+            return self.imageList
 
 
 class mockEngine():

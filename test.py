@@ -186,8 +186,12 @@ class TestDockers(unittest.TestCase):
         self.assertRaises(AssertionError, badCall)
 
     def test_countImages(self):
-        assert False
-
+        # 0 images
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=[]))
+        self.assertEqual(lib.checkDocker("asdf"), 0)
+       # 2 images
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(imageList=["asdf", "asdf"]))
+        self.assertEqual(lib.checkDocker("asdf"), 2)
 
 class TestStream(unittest.TestCase):
     def setUp(self):
@@ -220,6 +224,7 @@ class TestStream(unittest.TestCase):
 
     def test_stopAllContainers(self):
         assert False
+
 
 if __name__ == '__main__':
     res = unittest.main(verbosity=3, exit=False)
