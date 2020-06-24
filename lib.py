@@ -408,13 +408,14 @@ def checkStream(frame):
                 # check whether there is a failure
                 failed = parseFailure(frame.container)
                 if failed:  # failure
-                    showerror("Error", "Stream failed!")
+                    setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
                     frame.container = None  # reset container
                     # logger
                     logger.error("Stream Failed!")
+                    showerror("Error", "Stream failed!")
                 else:  # was ok and stopped normally
-                    setStream(frame, "yellow", "Inactivate")
+                    setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
                     frame.after(0, showinfo, "Info", "Stream ended succesfully!")
                     logger.info("Stream ended successfully!")

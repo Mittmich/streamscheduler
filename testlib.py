@@ -4,10 +4,15 @@ import datetime
 import pandas as pd
 import docker
 
+
+# exceptions
+
+
 class RootDestroyedException(BaseException):
     pass
 
 # mock tkinter
+
 
 class mockFrame(tkinter.Frame):
     def __init__(self, master=None):
@@ -37,11 +42,11 @@ class mockRoot():
 
 
 class mockContainer():
-    def __init__(self, log=None):
+    def __init__(self, log=None, status="created"):
         self.log = log
         self.index = None
         self.engine = None
-        self.call_ = None
+        self.status = status
 
     def logs(self, tail=1):
         return self.log
@@ -86,8 +91,10 @@ class mockImages():
 
 
 class mockEngine():
-    def __init__(self, images="Good", version="Good") -> None:
+    def __init__(self, images="Good", version="Good", containers=None) -> None:
         self.containers = mockContainers()
+        if containers is not None:
+            self.containers.containerList = containers
         self.containers.engine = self
         self.imagesInst = images
         self.versionInt = version

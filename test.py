@@ -2,10 +2,13 @@ import unittest
 import lib
 import pandas as pd
 from pandas.testing import assert_frame_equal
+from lib import checkStream
 import testlib
 from pathlib import Path
 from functools import partial
 import logging
+
+from testlib import mockContainer
 
 # TestCases
 
@@ -40,8 +43,95 @@ class TestGui(unittest.TestCase):
         self.assertTrue(hasattr(mockframe, "rectl_status"))
         self.assertTrue(hasattr(mockframe, "lbl_StreamSpeed"))
 
-    def test_checkStream(self):
-        assert False
+    def test_checkStream_noContainer(self):
+        # test whether nothing happens if container is none
+        mockframe = testlib.mockFrame()
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createStatusWidget(mockframe)
+        lib.checkStream(mockframe)
+        self.assertEqual(mockframe.status.get(), "yellow")
+        self.assertEqual(mockframe.streamActive, False)
+
+    def test_checkStream_containerRunningEarly(self):
+        """Tests whether the reaction to a running container that
+        has no valid bitrate output is correct."""
+        # test whether nothing happens if container is none
+        mockframe = testlib.mockFrame()
+        mockframe.container = mockContainer(status="running", log=b"asdf")
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createStatusWidget(mockframe)
+        lib.checkStream(mockframe)
+        self.assertEqual(mockframe.status.get(), "green")
+        self.assertEqual(mockframe.streamActive, False)
+        self.assertEqual(mockframe.lbl_StreamSpeed["text"], "-/-")
+
+    def test_checkStream_containerRunningLate(self):
+        """Tests whether the reaction to a running container that
+        has no valid bitrate output is correct."""
+        # test whether nothing happens if container is none
+        mockframe = testlib.mockFrame()
+        mockframe.container = mockContainer(status="running", log=b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createStatusWidget(mockframe)
+        lib.checkStream(mockframe)
+        self.assertEqual(mockframe.status.get(), "green")
+        self.assertEqual(mockframe.streamActive, False)
+        self.assertEqual(mockframe.lbl_StreamSpeed["text"], "920.3kbits/s")
+
+    def test_checkStream_containerCreated_inList(self):
+        """Tests whether the reaction to a created container that
+        is then the client.containers.list is correct"""
+        mockframe = testlib.mockFrame()
+        mockframe.container = mockContainer(status="created", log=b"asdf")
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        # monkeypatch client
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(), containers=[mockframe.container])
+        lib.createStatusWidget(mockframe)
+        lib.checkStream(mockframe)
+        self.assertEqual(mockframe.status.get(), "green")
+        self.assertEqual(mockframe.streamActive, False)
+        self.assertEqual(mockframe.lbl_StreamSpeed["text"], "-/-")
+
+    def test_checkStream_containerCreated_finished(self):
+        """Check whether reaction to a container that has been created and
+        finished succesfully is correct."""
+        mockframe = testlib.mockFrame()
+        mockframe.container = mockContainer(status="created", log=b"asdf")
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        # monkeypatch client
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
+        lib.createStatusWidget(mockframe)
+        lib.checkStream(mockframe)
+        self.assertEqual(mockframe.status.get(), "yellow")
+        self.assertEqual(mockframe.streamActive, False)
+        self.assertEqual(mockframe.lbl_StreamSpeed["text"], "Inactive")
+        self.assertEqual(mockframe.container, None)
+
+    def test_checkStream_containerCreated_crashed(self):
+        """Check whether reaction to a container that has been created and
+        finished succesfully is correct."""
+        mockframe = testlib.mockFrame()
+        mockframe.container = mockContainer(status="created", log=b"error")
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        # monkeypatch client
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
+        lib.showerror = testlib.raiseAssertion
+        lib.createStatusWidget(mockframe)
+        badcall = partial(checkStream, mockframe)
+        self.assertRaises(AssertionError, badcall)
+        self.assertEqual(mockframe.status.get(), "yellow")
+        self.assertEqual(mockframe.streamActive, False)
+        self.assertEqual(mockframe.lbl_StreamSpeed["text"], "Inactive")
+        self.assertEqual(mockframe.container, None)
 
     def test_setStream(self):
         mockframe = testlib.mockFrame()
