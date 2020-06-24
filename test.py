@@ -16,32 +16,8 @@ from testlib import mockContainer
 logging.getLogger("lib").disabled = True
 
 
-class TestGui(unittest.TestCase):
-
-    def test_createTimeWidget(self):
-        mockframe = testlib.mockFrame()
-        # monkey patch onupdate
-        lib.onUpdate = lambda x: 1
-        lib.createTimeWidget(mockframe)
-        # check whether it is there
-        self.assertTrue(hasattr(mockframe, "time_label"))
-        self.assertTrue(hasattr(mockframe, "time_title"))
-        self.assertTrue(hasattr(mockframe, "now"))
-
-    def test_onUpdate(self):
-        assert False
-
-    def test_createStatusWidget(self):
-        mockframe = testlib.mockFrame()
-        # monkey patch onupdate
-        lib.onUpdate = lambda x: 1
-        lib.createStatusWidget(mockframe)
-        # check whether it is there
-        self.assertTrue(hasattr(mockframe, "status"))
-        self.assertTrue(hasattr(mockframe, "streamSpeed"))
-        self.assertTrue(hasattr(mockframe, "status_title"))
-        self.assertTrue(hasattr(mockframe, "rectl_status"))
-        self.assertTrue(hasattr(mockframe, "lbl_StreamSpeed"))
+class TestCheckStream(unittest.TestCase):
+    """Tests the checkStream function"""
 
     def test_checkStream_noContainer(self):
         # test whether nothing happens if container is none
@@ -132,6 +108,106 @@ class TestGui(unittest.TestCase):
         self.assertEqual(mockframe.streamActive, False)
         self.assertEqual(mockframe.lbl_StreamSpeed["text"], "Inactive")
         self.assertEqual(mockframe.container, None)
+
+
+class TestCheckRightTime(unittest.TestCase):
+    """Tests the checkRightTime function."""
+
+    def test_checkRightTime_noSchedule(self):
+        mockframe = testlib.mockFrame()
+        # monkeypatch dispatch stream
+        lib.dispatch_stream = testlib.raiseAssertion
+        lib.checkRightTime(mockframe)  # should not raise AssertionError
+        self.assertEqual(mockframe.container, None)
+        self.assertEqual(mockframe.streamActive, False)
+
+    def test_checkRightTime_StreamInFuture(self):
+        mockframe = testlib.mockFrame()
+        # add current time
+        mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
+        # add schedule
+        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                            "Date/Time": [pd.Timestamp("2025-06-21 12:00:00"),
+                                                          pd.Timestamp("2025-06-22 13:00:00"),
+                                                          pd.Timestamp("2025-07-23 14:00:00")]})
+        # monkeypatch dispatch stream
+        lib.dispatch_stream = testlib.raiseAssertion
+        lib.checkRightTime(mockframe)  # should not raise AssertionError
+        self.assertEqual(mockframe.container, None)
+        self.assertEqual(mockframe.streamActive, False)
+
+    def test_checkRightTime_StreamInPast(self):
+        mockframe = testlib.mockFrame()
+        # add current time
+        mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
+        # add schedule
+        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                            "Date/Time": [pd.Timestamp("2009-06-21 12:00:00"),
+                                                          pd.Timestamp("2009-06-22 13:00:00"),
+                                                          pd.Timestamp("2009-07-23 14:00:00")]})
+        # monkeypatch dispatch stream
+        lib.dispatch_stream = testlib.raiseAssertion
+        lib.checkRightTime(mockframe)  # should not raise AssertionError
+        self.assertEqual(mockframe.container, None)
+        self.assertEqual(mockframe.streamActive, False)
+
+    def test_checkRightTime_RightTime(self):
+        mockframe = testlib.mockFrame()
+        # add current time
+        mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
+        # add schedule
+        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                            "Date/Time": [pd.Timestamp("2010-06-21 12:00:01"),
+                                                          pd.Timestamp("2009-06-22 13:00:00"),
+                                                          pd.Timestamp("2009-07-23 14:00:00")]})
+        # monkeypatch dispatch stream
+        lib.dispatch_stream = testlib.raiseAssertion
+        goodCall = partial(lib.checkRightTime, mockframe)
+        self.assertRaises(AssertionError, goodCall)
+        # second monkeypatch to check whether events afterwards happen correctly
+        lib.dispatch_stream = lambda x, y, z: None
+        mockframe.after = testlib.raiseAssertion  # this is called by the error dispatching functions
+        lib.draw_config = lambda x, y: None
+        goodCall = partial(lib.checkRightTime, mockframe)
+        self.assertRaises(AssertionError, goodCall)
+        # call it again to see whether the effects are correct
+        mockframe.after = lambda x, y, z, a: None  # this is called by the error dispatching functions
+        lib.checkRightTime(mockframe)  # before the call only goes through to frame.after because assertion is raised there
+        self.assertEqual(len(mockframe.schedule), 2)
+        self.assertEqual(mockframe.streamActive, False)
+
+class TestGui(unittest.TestCase):
+
+    def test_createTimeWidget(self):
+        mockframe = testlib.mockFrame()
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createTimeWidget(mockframe)
+        # check whether it is there
+        self.assertTrue(hasattr(mockframe, "time_label"))
+        self.assertTrue(hasattr(mockframe, "time_title"))
+        self.assertTrue(hasattr(mockframe, "now"))
+
+    def test_onUpdate(self):
+        assert False
+
+    def test_createStatusWidget(self):
+        mockframe = testlib.mockFrame()
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createStatusWidget(mockframe)
+        # check whether it is there
+        self.assertTrue(hasattr(mockframe, "status"))
+        self.assertTrue(hasattr(mockframe, "streamSpeed"))
+        self.assertTrue(hasattr(mockframe, "status_title"))
+        self.assertTrue(hasattr(mockframe, "rectl_status"))
+        self.assertTrue(hasattr(mockframe, "lbl_StreamSpeed"))
 
     def test_setStream(self):
         mockframe = testlib.mockFrame()

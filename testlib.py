@@ -28,6 +28,7 @@ class mockFrame(tkinter.Frame):
         self.nowDT = datetime.datetime(year=1900, month=12, day=5)
         self.streamActive = False
         self.imageName = "asdf"
+        self.pathMap = None
 
     def after(*args):
         """Override after method to avoid repeated calling"""

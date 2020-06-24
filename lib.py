@@ -487,7 +487,7 @@ def checkRightTime(frame):
     if frame.schedule is None:  # not schedule loaded
         return
     if len(frame.schedule) == 0:  # no more streams to stream
-        return None
+        return
     if not frame.streamActive:
         # check the next stream to start
         nextRow = next(frame.schedule.iterrows())[1]
