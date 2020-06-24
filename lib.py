@@ -344,12 +344,12 @@ def createTimeWidget(frame):
     frameW = tkinter.Frame(frame)
     frame.now = tkinter.StringVar()
     # Title
-    frame.title = tkinter.Label(frameW, text="Current Time | Time to stream:", font=('Helvetica', 12))
-    frame.title.pack()
+    frame.time_title = tkinter.Label(frameW, text="Current Time | Time to stream:", font=('Helvetica', 12))
+    frame.time_title.pack()
     # system time
-    frame.time = tkinter.Label(frameW, font=('Helvetica', 8))
-    frame.time.pack()
-    frame.time["textvariable"] = frame.now
+    frame.time_label = tkinter.Label(frameW, font=('Helvetica', 8))
+    frame.time_label.pack()
+    frame.time_label["textvariable"] = frame.now
     # initial time display
     onUpdate(frame)
     frameW.grid(column=1, row=1, sticky="S")

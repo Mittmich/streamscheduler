@@ -16,19 +16,39 @@ logging.getLogger("lib").disabled = True
 class TestGui(unittest.TestCase):
 
     def test_createTimeWidget(self):
-        assert False
+        mockframe = testlib.mockFrame()
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createTimeWidget(mockframe)
+        # check whether it is there
+        self.assertTrue(hasattr(mockframe, "time_label"))
+        self.assertTrue(hasattr(mockframe, "time_title"))
+        self.assertTrue(hasattr(mockframe, "now"))
 
     def test_onUpdate(self):
         assert False
 
     def test_createStatusWidget(self):
-        assert False
+        mockframe = testlib.mockFrame()
+        # monkey patch onupdate
+        lib.onUpdate = lambda x: 1
+        lib.createStatusWidget(mockframe)
+        # check whether it is there
+        self.assertTrue(hasattr(mockframe, "status"))
+        self.assertTrue(hasattr(mockframe, "streamSpeed"))
+        self.assertTrue(hasattr(mockframe, "status_title"))
+        self.assertTrue(hasattr(mockframe, "rectl_status"))
+        self.assertTrue(hasattr(mockframe, "lbl_StreamSpeed"))
 
     def test_checkStream(self):
         assert False
 
     def test_setStream(self):
-        assert False
+        mockframe = testlib.mockFrame()
+        lib.createStatusWidget(mockframe)
+        lib.setStream(mockframe, "green", "1234")
+        self.assertEqual(mockframe.status.get(), "green")
+        self.assertEqual(mockframe.streamSpeed.get(), "1234")
 
     def test_checkRightTime(self):
         assert False
