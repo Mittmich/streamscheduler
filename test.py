@@ -11,9 +11,35 @@ import logging
 # TestCases
 
 # Switch off logging
-logging.getLogger("root").disabled = True
+logging.getLogger("lib").disabled = True
+
 
 class TestGui(unittest.TestCase):
+
+    def test_createTimeWidget(self):
+        assert False
+
+    def test_onUpdate(self):
+        assert False
+
+    def test_createStatusWidget(self):
+        assert False
+
+    def test_checkStream(self):
+        assert False
+
+    def test_setStream(self):
+        assert False
+
+    def test_checkRightTime(self):
+        assert False
+
+    def checkPastStream(self):
+        assert False
+
+    def test_checkstreamevents(self):
+        assert False
+
     def test_drawconfigGrid(self):
         mockframe = testlib.mockFrame()
         lib.drawConfigGrid(mockframe)
@@ -83,11 +109,16 @@ class TestParse(unittest.TestCase):
 
     def test_drawconfig(self):
         lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
+        i = 0
         for i in range(len(self.mockframe.schedule)):
             tempFile = self.mockframe.grid["grid"][i][0].get()
             self.assertEqual(Path(self.mockframe.schedule.iloc[i, 0]).name, tempFile)
             tempDateTime = pd.Timestamp(self.mockframe.grid["grid"][i][1].get())
             self.assertEqual(self.mockframe.schedule.iloc[i, 1], tempDateTime)
+        # Test that the other lines contain ----
+        for index in range(i + 1, 10):
+            temp = self.mockframe.grid["grid"][index][0].get()
+            self.assertEqual(temp, " ".join(["-"] * 20))
 
     def test_checkConfigTiming(self):
         # bad example
@@ -117,6 +148,17 @@ class TestParse(unittest.TestCase):
         self.assertTrue(lib.parseFailure(badContainer3))
 
 
+class TestDockers(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_checkDocker(self):
+        assert False
+
+    def test_countImages(self):
+        assert False
+
+
 class TestStream(unittest.TestCase):
     def setUp(self):
         self.credentials = {"User": 12345, "Password": 678910,
@@ -143,6 +185,11 @@ class TestStream(unittest.TestCase):
         lib.stopTestContainer(self.mockframe)
         self.assertEqual(len(self.engine.containers), 0)
 
+    def test_dispatch_Stream(self):
+        assert False
+
+    def test_stopAllContainers(self):
+        assert False
 
 if __name__ == '__main__':
     res = unittest.main(verbosity=3, exit=False)
