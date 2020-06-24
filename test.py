@@ -225,9 +225,6 @@ class TestGui(unittest.TestCase):
         # undo monkey patch
         lib.onUpdate = oldOnUpdate
 
-    def test_onUpdate(self):
-        pass
-
     def test_createStatusWidget(self):
         mockframe = testlib.mockFrame()
         # monkey patch onupdate
@@ -250,11 +247,38 @@ class TestGui(unittest.TestCase):
         self.assertEqual(mockframe.status.get(), "green")
         self.assertEqual(mockframe.streamSpeed.get(), "1234")
 
-    def checkPastStream(self):
-        pass
-
-    def test_checkstreamevents(self):
-        pass
+    def test_checkPastStream(self):
+        mockframe = testlib.mockFrame()
+        mockframe.streamActive = True
+        mockframe.nowDT = pd.Timestamp("2009-07-23 14:00:00")
+        # monkey patch draw config and on update
+        oldDrawConfig = lib.draw_config
+        lib.draw_config = lambda x, y: None
+        oldOnUpdate = lib.onUpdate
+        lib.onUpdate = lambda: None
+        # only present/future events
+        goodDf = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                            "Date/Time": [pd.Timestamp("2015-06-21 12:00:01"),
+                                                          pd.Timestamp("2015-06-22 13:00:00"),
+                                                          pd.Timestamp("2015-07-23 14:00:00")]})
+        mockframe.schedule = goodDf
+        lib.checkPastStream(mockframe)
+        assert_frame_equal(mockframe.schedule, goodDf)
+        # one past event
+        badDf = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                                        "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                                        "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
+                                    "Date/Time": [pd.Timestamp("2008-06-21 12:00:01"),
+                                                  pd.Timestamp("2012-06-22 13:00:00"),
+                                                  pd.Timestamp("2012-07-23 14:00:00")]})
+        mockframe.schedule = badDf
+        lib.checkPastStream(mockframe)
+        assert_frame_equal(mockframe.schedule, badDf.iloc[1:, :])
+        # restore old draw config
+        lib.draw_config = oldDrawConfig
+        lib.onUpdate = oldOnUpdate
 
     def test_drawconfigGrid(self):
         mockframe = testlib.mockFrame()
