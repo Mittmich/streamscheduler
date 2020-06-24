@@ -2,9 +2,7 @@
 import tkinter
 import datetime
 import pandas as pd
-
-# 
-
+import docker
 
 class RootDestroyedException(BaseException):
     pass
@@ -73,10 +71,30 @@ class mockContainers():
         return len(self.containerList)
 
 
+class mockImages():
+    def __init__(self, good=True) -> None:
+        self.good = good
+
+    def get(self, imageName):
+        if not self.good:
+            raise docker.errors.ImageNotFound("asdf")
+
+
 class mockEngine():
-    def __init__(self) -> None:
+    def __init__(self, images="Good", version="Good") -> None:
         self.containers = mockContainers()
         self.containers.engine = self
+        self.imagesInst = images
+        self.versionInt = version
+
+    def version(self):
+        """Dummy call for version"""
+        if self.versionInt != "Good":
+            raise AssertionError
+
+    @property
+    def images(self):
+            return self.imagesInst
 
 # misc functions
 

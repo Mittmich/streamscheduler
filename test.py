@@ -6,6 +6,7 @@ import testlib
 from pathlib import Path
 from functools import partial
 import logging
+import docker
 
 
 # TestCases
@@ -149,11 +150,40 @@ class TestParse(unittest.TestCase):
 
 
 class TestDockers(unittest.TestCase):
+    def makeGood(self):
+        # setup things in a way that all tests of checkDocker will pass
+        lib.shutil.which = lambda x: "asdf"  # this will make the call return something
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages())
+        lib.countImages = lambda x: 0
+
     def setUp(self):
-        pass
+        self.makeGood()
 
     def test_checkDocker(self):
-        assert False
+        # check if everything passes
+        lib.checkDocker("ffmpeg:1.0")
+        # simulate docker not installed
+        lib.shutil.which = lambda x: None
+        lib.showerror = testlib.raiseAssertion
+        badCall = partial(lib.checkDocker, "asdf")
+        self.assertRaises(AssertionError, badCall)
+        # reset to good version
+        self.makeGood()
+        # simulate version is not ok
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(), version="Bad")
+        badCall = partial(lib.checkDocker, "asdf")
+        self.assertRaises(AssertionError, badCall)
+        # reset to good version
+        self.makeGood()
+        # simulate image is not installed
+        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(good=False))
+        badCall = partial(lib.checkDocker, "asdf")
+        self.assertRaises(AssertionError, badCall)
+        # simulate count of image is not right
+        self.makeGood()
+        lib.countImages = lambda x: 1
+        badCall = partial(lib.checkDocker, "asdf")
+        self.assertRaises(AssertionError, badCall)
 
     def test_countImages(self):
         assert False
