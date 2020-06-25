@@ -305,9 +305,6 @@ class TestGui(unittest.TestCase):
         # set stream to active
         mockframe.streamActive = True
         destroyCall = partial(lib.askExit, frame=mockframe, root=mockroot)
-        # set stream to inactive
-        mockframe.streamActive = False
-        self.assertRaises(testlib.RootDestroyedException, destroyCall)
         # restore old function
         lib.askyesno = oldAskYesNo
 
