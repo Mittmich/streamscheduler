@@ -9,3 +9,4 @@ Real_vid_2.mp4
 build/*
 dist/*
 *.spec
+.DS_Store
