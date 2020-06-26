@@ -371,9 +371,9 @@ class TestParse(unittest.TestCase):
         self.goodConfig = pd.DataFrame(
             {
                 "File": [
-                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                    "test_files\\vids\\test.mp4",
+                    "test_files\\vids\\test2.mp4",
+                    "test_files\\vids\\test4.mp4",
                 ],
                 "Date/Time": [
                     pd.Timestamp("2025-06-21 12:00:00"),
