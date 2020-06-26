@@ -14,9 +14,11 @@ import logging
 
 # define global variables
 
-RTMPSETTINGS_TEMPLATE = ("'{} "
-                         "flashver=FMLE/3.020(compatible;20FMSc/1.0)"
-                         " live=true pubUser={} pubPasswd={} playpath={}'")
+RTMPSETTINGS_TEMPLATE = (
+    "'{} "
+    "flashver=FMLE/3.020(compatible;20FMSc/1.0)"
+    " live=true pubUser={} pubPasswd={} playpath={}'"
+)
 
 FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
                         -f lavfi\
@@ -66,6 +68,7 @@ def askExit(frame, root):
         stopAllContainers(frame, frame.imageName)
         root.destroy()
 
+
 # parsing related functions
 
 
@@ -96,9 +99,9 @@ def check_config_format(df):
     # check datatypes
     try:
         for row in df.iterrows():
-                assert isinstance(row[1]["Date"], datetime.datetime)
-                assert isinstance(row[1]["Time"], datetime.time)
-                assert isinstance(row[1]["File"], str)
+            assert isinstance(row[1]["Date"], datetime.datetime)
+            assert isinstance(row[1]["Time"], datetime.time)
+            assert isinstance(row[1]["File"], str)
     except AssertionError:
         showerror("Error", "Schedule does not have the right format/datatypes!")
         logger.error("Schedule does not have the right format/datatypes!")
@@ -127,15 +130,20 @@ def parseContainerOutput(contID):
             # standard out trick to parse ffmpeg output
             matched = re.findall(r"\d+\.\dkbits\/s", line.strip().decode())
             if len(matched) > 0:
-                yield re.findall(r"\d+\.\dkbits\/s", line.strip().decode())[-1]  # yield newest bitrate
+                yield re.findall(r"\d+\.\dkbits\/s", line.strip().decode())[
+                    -1
+                ]  # yield newest bitrate
             else:
                 yield None
 
 
 def load_config(frame, filepath=None):
     if filepath is None:
-        filename = filedialog.askopenfilename(initialdir="/", title="Select file",
-                                              filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")))
+        filename = filedialog.askopenfilename(
+            initialdir="/",
+            title="Select file",
+            filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")),
+        )
     else:
         filename = filepath
     schedule = pd.read_excel(filename)
@@ -143,7 +151,9 @@ def load_config(frame, filepath=None):
     good = check_config_format(schedule)
     if good:
         # combine date and time for display
-        schedule.loc[:, "Date/Time"] = schedule.apply(lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1)
+        schedule.loc[:, "Date/Time"] = schedule.apply(
+            lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1
+        )
         schedule = schedule.drop(columns=["Date", "Time"])
         # sort by date/time
         schedule = schedule.sort_values(by="Date/Time")
@@ -172,7 +182,11 @@ def parseFailure(container):
     """Check if container has failed.
     This is very crude!"""
     check = container.logs().decode()
-    if ("error" in check.lower()) or ("failure" in check.lower()) or ("not found" in check.lower()):
+    if (
+        ("error" in check.lower())
+        or ("failure" in check.lower())
+        or ("not found" in check.lower())
+    ):
         # logger
         logger.error(f"Stream Failed! With the following line {check}")
         return True
@@ -220,8 +234,13 @@ def checkDocker(imageName):
         showerror("Error", f"{imageName} not found in docker.images!")
         logger.error(f"{imageName} not found in docker.images!")
     if countImages(imageName) != 0:
-        showerror("Error", "Other containers with the same image are running!\n Please stop the containers.")
-        logger.error("Other containers with the same image are running!\n Please stop the containers.")
+        showerror(
+            "Error",
+            "Other containers with the same image are running!\n Please stop the containers.",
+        )
+        logger.error(
+            "Other containers with the same image are running!\n Please stop the containers."
+        )
 
 
 def countImages(imageName):
@@ -233,6 +252,7 @@ def countImages(imageName):
             count += 1
     return count
 
+
 # Streaming related functions
 
 
@@ -240,9 +260,12 @@ def dispatch_test_stream(credentials, engine=None):
     """Starts streaming via ffmpeg.
     Returns subprocess.Popen instance."""
     # fill in credentials
-    filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
-                                              credentials["User"], credentials["Password"],
-                                              credentials["playpath"])
+    filledRTMP = RTMPSETTINGS_TEMPLATE.format(
+        credentials["rtmp-URL"],
+        credentials["User"],
+        credentials["Password"],
+        credentials["playpath"],
+    )
     # fill in ffmpeg
     ffmpegCommand = FFMPEG_TEMPLATE_TEST.format(filledRTMP)
     # connect to docker client
@@ -265,9 +288,12 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
     """Starts streaming via ffmpeg.
     Returns docker container object."""
     # fill in credentials
-    filledRTMP = RTMPSETTINGS_TEMPLATE.format(credentials["rtmp-URL"],
-                                              credentials["User"], credentials["Password"],
-                                              credentials["playpath"])
+    filledRTMP = RTMPSETTINGS_TEMPLATE.format(
+        credentials["rtmp-URL"],
+        credentials["User"],
+        credentials["Password"],
+        credentials["playpath"],
+    )
     # fill in ffmpeg
     ffmpegCommand = FFMPEG_TEMPLATE.format(videofile, filledRTMP)
     # connect to docker client
@@ -276,7 +302,9 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
     else:
         client = engine
     try:
-        contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap)
+        contID = client.containers.run(
+            "ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap
+        )
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
         logger.error("Docker is not ready/installed")
@@ -329,6 +357,7 @@ def stopAllContainers(frame, imageName):
         showinfo("Stopped", "All containers stopped!")
         logger.info("All containers stopped!")
 
+
 # gui-related functions
 
 
@@ -339,10 +368,12 @@ def createTimeWidget(frame):
     frameW = tkinter.Frame(frame)
     frame.now = tkinter.StringVar()
     # Title
-    frame.time_title = tkinter.Label(frameW, text="Current Time | Time to stream:", font=('Helvetica', 12))
+    frame.time_title = tkinter.Label(
+        frameW, text="Current Time | Time to stream:", font=("Helvetica", 12)
+    )
     frame.time_title.pack()
     # system time
-    frame.time_label = tkinter.Label(frameW, font=('Helvetica', 8))
+    frame.time_label = tkinter.Label(frameW, font=("Helvetica", 8))
     frame.time_label.pack()
     frame.time_label["textvariable"] = frame.now
     # initial time display
@@ -375,13 +406,15 @@ def createStatusWidget(frame):
     # create subwindow in toplevel window
     frameS = tkinter.Frame(frame)
     # Title
-    frame.status_title = tkinter.Label(frameS, text="Stream Status:", font=('Helvetica', 12))
+    frame.status_title = tkinter.Label(
+        frameS, text="Stream Status:", font=("Helvetica", 12)
+    )
     frame.status_title.pack()
     # status rectangle
     frame.rectl_status = tkinter.Frame(frameS, width=20, height=20)
     frame.rectl_status.pack()
     # streamingspeed
-    frame.lbl_StreamSpeed = tkinter.Label(frame.rectl_status, font=('Helvetica', 8))
+    frame.lbl_StreamSpeed = tkinter.Label(frame.rectl_status, font=("Helvetica", 8))
     frame.lbl_StreamSpeed.pack()
     frame.lbl_StreamSpeed["textvariable"] = frame.streamSpeed
     frame.lbl_StreamSpeed.configure(bg=frame.status.get())
@@ -448,11 +481,7 @@ def drawConfigGrid(window):
     # draw column boxes
     window.grid["Names"] = {}
     for i, name in enumerate(["File", "Date/Time"]):
-        frame = tkinter.Frame(
-                frameM,
-                relief=tkinter.RAISED,
-                borderwidth=1
-            )
+        frame = tkinter.Frame(frameM, relief=tkinter.RAISED, borderwidth=1)
         frame.grid(row=0, column=i)
         label = tkinter.Label(master=frame, text=f"{name}")
         label.pack()
@@ -462,15 +491,13 @@ def drawConfigGrid(window):
     # draw grid elements
     for index, row in enumerate(range(10), start=1):
         for j in range(2):
-            frame = tkinter.Frame(
-                frameM,
-                relief=tkinter.SUNKEN,
-                borderwidth=1
-            )
+            frame = tkinter.Frame(frameM, relief=tkinter.SUNKEN, borderwidth=1)
             window.grid["grid"][row][j] = tkinter.StringVar()
             window.grid["grid"][row][j].set(" ".join(["-"] * 20))
             frame.grid(row=index, column=j)
-            label = tkinter.Label(master=frame, textvariable=window.grid["grid"][row][j])
+            label = tkinter.Label(
+                master=frame, textvariable=window.grid["grid"][row][j]
+            )
             label.pack()
             frameM.columnconfigure(index, weight=1, minsize=200)
             frameM.rowconfigure(j, weight=1, minsize=20)
@@ -495,16 +522,30 @@ def checkRightTime(frame):
         difference = datetime.timedelta(seconds=20)
         frame.timeToStream = np.abs(now - time)
         logger.debug(f"Time to stream is: {frame.timeToStream}")
-        logger.debug(f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}")
+        logger.debug(
+            f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
+        )
         if np.abs(now - time) < difference:
-            frame.container = dispatch_stream(targetPath, frame.credentials, frame.pathMap)
+            frame.container = dispatch_stream(
+                targetPath, frame.credentials, frame.pathMap
+            )
             if frame.container is not None:
-                frame.after(10, showinfo, "Start", f"Stream start: {Path(videoFile).name} at {time}")
+                frame.after(
+                    10,
+                    showinfo,
+                    "Start",
+                    f"Stream start: {Path(videoFile).name} at {time}",
+                )
                 logger.info("Stream started!")
                 # set stream activate to true
                 frame.streamActive = True
             else:
-                frame.after(10, showerror, "Error", "Error starting stream. Docker is not ready/installed.")
+                frame.after(
+                    10,
+                    showerror,
+                    "Error",
+                    "Error starting stream. Docker is not ready/installed.",
+                )
                 logger.error("Error starting stream. Docker is not ready/installed.")
             # pluck the row from the schedule. Even if there was an error, otherwise streams in the future will not run
             frame.schedule = frame.schedule.iloc[1:, :]
@@ -519,7 +560,9 @@ def checkPastStream(frame):
     than the difference."""
     if frame.streamActive:
         oldLength = len(frame.schedule)
-        frame.schedule = frame.schedule.loc[frame.schedule["Date/Time"] > frame.nowDT, :]
+        frame.schedule = frame.schedule.loc[
+            frame.schedule["Date/Time"] > frame.nowDT, :
+        ]
         if oldLength != len(frame.schedule):
             draw_config(frame, frame.schedule)
 

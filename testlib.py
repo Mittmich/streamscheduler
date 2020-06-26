@@ -11,6 +11,7 @@ import docker
 class RootDestroyedException(BaseException):
     pass
 
+
 # mock tkinter
 
 
@@ -35,14 +36,15 @@ class mockFrame(tkinter.Frame):
         pass
 
 
-class mockRoot():
+class mockRoot:
     def destroy(self):
         raise RootDestroyedException
+
 
 # mock docker
 
 
-class mockContainer():
+class mockContainer:
     def __init__(self, log=None, status="created", name="asdf"):
         self.log = log
         self.index = None
@@ -57,7 +59,7 @@ class mockContainer():
         self.engine.containers.containerList.pop(self.index)
 
 
-class mockContainers():
+class mockContainers:
     def __init__(self, name="asdf"):
         self.containerList = []
         self.engine = None
@@ -67,10 +69,12 @@ class mockContainers():
         return self.containerList
 
     def run(self, *args, **kwargs):
-        newCont = mockContainer(b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
+        newCont = mockContainer(
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+        )
         self.containerList.append(newCont)
         newCont.index = self.containerList.index(newCont)
         newCont.engine = self.engine
@@ -80,7 +84,7 @@ class mockContainers():
         return len(self.containerList)
 
 
-class mockImages():
+class mockImages:
     def __init__(self, good=True, imageList=None) -> None:
         self.good = good
         self.imageList = None
@@ -92,7 +96,7 @@ class mockImages():
             return self.imageList
 
 
-class mockEngine():
+class mockEngine:
     def __init__(self, images="Good", version="Good", containers=None) -> None:
         self.containers = mockContainers()
         if containers is not None:
@@ -108,7 +112,8 @@ class mockEngine():
 
     @property
     def images(self):
-            return self.imagesInst
+        return self.imagesInst
+
 
 # misc functions
 

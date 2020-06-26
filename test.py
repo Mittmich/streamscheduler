@@ -46,10 +46,13 @@ class TestCheckStream(unittest.TestCase):
         has no valid bitrate output is correct."""
         # test whether nothing happens if container is none
         mockframe = testlib.mockFrame()
-        mockframe.container = testlib.mockContainer(status="running", log=b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                                  b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
+        mockframe.container = testlib.mockContainer(
+            status="running",
+            log=b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s",
+        )
         # monkey patch onupdate
         lib.onUpdate = lambda x: 1
         lib.createStatusWidget(mockframe)
@@ -68,7 +71,9 @@ class TestCheckStream(unittest.TestCase):
         lib.onUpdate = lambda x: 1
         # monkeypatch client
         oldClient = lib.docker.from_env
-        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(), containers=[mockframe.container])
+        lib.docker.from_env = lambda: testlib.mockEngine(
+            testlib.mockImages(), containers=[mockframe.container]
+        )
         lib.createStatusWidget(mockframe)
         lib.checkStream(mockframe)
         self.assertEqual(mockframe.status.get(), "green")
@@ -142,12 +147,20 @@ class TestCheckRightTime(unittest.TestCase):
         # add current time
         mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
         # add schedule
-        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                            "Date/Time": [pd.Timestamp("2025-06-21 12:00:00"),
-                                                          pd.Timestamp("2025-06-22 13:00:00"),
-                                                          pd.Timestamp("2025-07-23 14:00:00")]})
+        mockframe.schedule = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2025-06-21 12:00:00"),
+                    pd.Timestamp("2025-06-22 13:00:00"),
+                    pd.Timestamp("2025-07-23 14:00:00"),
+                ],
+            }
+        )
         # monkeypatch dispatch stream
         oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
@@ -162,12 +175,20 @@ class TestCheckRightTime(unittest.TestCase):
         # add current time
         mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
         # add schedule
-        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                            "Date/Time": [pd.Timestamp("2009-06-21 12:00:00"),
-                                                          pd.Timestamp("2009-06-22 13:00:00"),
-                                                          pd.Timestamp("2009-07-23 14:00:00")]})
+        mockframe.schedule = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2009-06-21 12:00:00"),
+                    pd.Timestamp("2009-06-22 13:00:00"),
+                    pd.Timestamp("2009-07-23 14:00:00"),
+                ],
+            }
+        )
         # monkeypatch dispatch stream
         oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
@@ -182,12 +203,20 @@ class TestCheckRightTime(unittest.TestCase):
         # add current time
         mockframe.nowDT = pd.Timestamp("2010-06-21 12:00:00")
         # add schedule
-        mockframe.schedule = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                            "Date/Time": [pd.Timestamp("2010-06-21 12:00:01"),
-                                                          pd.Timestamp("2009-06-22 13:00:00"),
-                                                          pd.Timestamp("2009-07-23 14:00:00")]})
+        mockframe.schedule = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2010-06-21 12:00:01"),
+                    pd.Timestamp("2009-06-22 13:00:00"),
+                    pd.Timestamp("2009-07-23 14:00:00"),
+                ],
+            }
+        )
         # monkeypatch dispatch stream
         oldDispatch = lib.dispatch_stream
         lib.dispatch_stream = testlib.raiseAssertion
@@ -195,14 +224,20 @@ class TestCheckRightTime(unittest.TestCase):
         self.assertRaises(AssertionError, goodCall)
         # second monkeypatch to check whether events afterwards happen correctly
         lib.dispatch_stream = lambda x, y, z: None
-        mockframe.after = testlib.raiseAssertion  # this is called by the error dispatching functions
+        mockframe.after = (
+            testlib.raiseAssertion
+        )  # this is called by the error dispatching functions
         oldDrawConfig = lib.draw_config
         lib.draw_config = lambda x, y: None
         goodCall = partial(lib.checkRightTime, mockframe)
         self.assertRaises(AssertionError, goodCall)
         # call it again to see whether the effects are correct
-        mockframe.after = lambda x, y, z, a: None  # this is called by the error dispatching functions
-        lib.checkRightTime(mockframe)  # before the call only goes through to frame.after because assertion is raised there
+        mockframe.after = (
+            lambda x, y, z, a: None
+        )  # this is called by the error dispatching functions
+        lib.checkRightTime(
+            mockframe
+        )  # before the call only goes through to frame.after because assertion is raised there
         self.assertEqual(len(mockframe.schedule), 2)
         self.assertEqual(mockframe.streamActive, False)
         # undo monkeypatch
@@ -211,7 +246,6 @@ class TestCheckRightTime(unittest.TestCase):
 
 
 class TestGui(unittest.TestCase):
-
     def test_createTimeWidget(self):
         mockframe = testlib.mockFrame()
         # monkey patch onupdate
@@ -257,22 +291,38 @@ class TestGui(unittest.TestCase):
         oldOnUpdate = lib.onUpdate
         lib.onUpdate = lambda: None
         # only present/future events
-        goodDf = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                            "Date/Time": [pd.Timestamp("2015-06-21 12:00:01"),
-                                                          pd.Timestamp("2015-06-22 13:00:00"),
-                                                          pd.Timestamp("2015-07-23 14:00:00")]})
+        goodDf = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2015-06-21 12:00:01"),
+                    pd.Timestamp("2015-06-22 13:00:00"),
+                    pd.Timestamp("2015-07-23 14:00:00"),
+                ],
+            }
+        )
         mockframe.schedule = goodDf
         lib.checkPastStream(mockframe)
         assert_frame_equal(mockframe.schedule, goodDf)
         # one past event
-        badDf = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                        "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                        "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                    "Date/Time": [pd.Timestamp("2008-06-21 12:00:01"),
-                                                  pd.Timestamp("2012-06-22 13:00:00"),
-                                                  pd.Timestamp("2012-07-23 14:00:00")]})
+        badDf = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2008-06-21 12:00:01"),
+                    pd.Timestamp("2012-06-22 13:00:00"),
+                    pd.Timestamp("2012-07-23 14:00:00"),
+                ],
+            }
+        )
         mockframe.schedule = badDf
         lib.checkPastStream(mockframe)
         assert_frame_equal(mockframe.schedule, badDf.iloc[1:, :])
@@ -311,20 +361,33 @@ class TestGui(unittest.TestCase):
 
 class TestParse(unittest.TestCase):
     def setUp(self) -> None:
-        self.GoodContainer = testlib.mockContainer(b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
-                                                   b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s")
+        self.GoodContainer = testlib.mockContainer(
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+            b"\rframe 918.3kbits/s 38.8image 25 fps \frame 920.3kbits/s"
+        )
         self.badContainer = testlib.mockContainer(b"press [q] press [h]")
-        self.goodConfig = pd.DataFrame({"File": ["C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
-                                                 "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
-                                                 "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4"],
-                                        "Date/Time": [pd.Timestamp("2025-06-21 12:00:00"),
-                                                      pd.Timestamp("2025-06-22 13:00:00"),
-                                                      pd.Timestamp("2025-07-23 14:00:00")]})
-        self.goodCredentials = {"User": 12345, "Password": 678910,
-                                "rtmp-URL": "rtmp://i.amagood.server",
-                                "playpath": "dclive_0_1@2345"}
+        self.goodConfig = pd.DataFrame(
+            {
+                "File": [
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test2.mp4",
+                    "C:\\Users\\michael.mitter\\Documents\\streamscheduler\\test_files\\vids\\test4.mp4",
+                ],
+                "Date/Time": [
+                    pd.Timestamp("2025-06-21 12:00:00"),
+                    pd.Timestamp("2025-06-22 13:00:00"),
+                    pd.Timestamp("2025-07-23 14:00:00"),
+                ],
+            }
+        )
+        self.goodCredentials = {
+            "User": 12345,
+            "Password": 678910,
+            "rtmp-URL": "rtmp://i.amagood.server",
+            "playpath": "dclive_0_1@2345",
+        }
         self.mockframe = testlib.mockFrame()
         # draw grid onto mockFrame
         lib.drawConfigGrid(self.mockframe)
@@ -340,12 +403,16 @@ class TestParse(unittest.TestCase):
         self.assertEqual(result, "920.3kbits/s")
 
     def test_loadconfig(self):
-        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
+        lib.load_config(
+            self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx"
+        )
         assert_frame_equal(self.mockframe.schedule, self.goodConfig)
         self.assertEqual(self.mockframe.credentials, self.goodCredentials)
 
     def test_drawconfig(self):
-        lib.load_config(self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
+        lib.load_config(
+            self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx"
+        )
         i = 0
         for i in range(len(self.mockframe.schedule)):
             tempFile = self.mockframe.grid["grid"][i][0].get()
@@ -359,21 +426,41 @@ class TestParse(unittest.TestCase):
 
     def test_checkConfigTiming(self):
         # bad example
-        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badTiming.xlsx")
+        badCall = partial(
+            lib.load_config,
+            frame=self.mockframe,
+            filepath="./test_files/test_schedule_1_mock_badTiming.xlsx",
+        )
         self.assertRaises(AssertionError, badCall)
         # good example
-        goodCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_good.xlsx")
+        goodCall = partial(
+            lib.load_config,
+            frame=self.mockframe,
+            filepath="./test_files/test_schedule_1_mock_good.xlsx",
+        )
         goodCall()
 
     def test_config_format(self):
         # bad example - bad datatypes
-        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badDtypes.xlsx")
+        badCall = partial(
+            lib.load_config,
+            frame=self.mockframe,
+            filepath="./test_files/test_schedule_1_mock_badDtypes.xlsx",
+        )
         self.assertRaises(AssertionError, badCall)
         # bad example - badfiles
-        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badfiles.xlsx")
+        badCall = partial(
+            lib.load_config,
+            frame=self.mockframe,
+            filepath="./test_files/test_schedule_1_mock_badfiles.xlsx",
+        )
         self.assertRaises(AssertionError, badCall)
         # bad example - bad videodirs
-        badCall = partial(lib.load_config, frame=self.mockframe, filepath="./test_files/test_schedule_1_mock_badVideoDir.xlsx")
+        badCall = partial(
+            lib.load_config,
+            frame=self.mockframe,
+            filepath="./test_files/test_schedule_1_mock_badVideoDir.xlsx",
+        )
         self.assertRaises(AssertionError, badCall)
 
     def test_parseFailure(self):
@@ -409,7 +496,9 @@ class TestDockers(unittest.TestCase):
         # reset to good version
         self.makeGood()
         # simulate version is not ok
-        lib.docker.from_env = lambda: testlib.mockEngine(testlib.mockImages(), version="Bad")
+        lib.docker.from_env = lambda: testlib.mockEngine(
+            testlib.mockImages(), version="Bad"
+        )
         badCall = partial(lib.checkDocker, "asdf")
         self.assertRaises(AssertionError, badCall)
         # reset to good version
@@ -436,7 +525,9 @@ class TestDockers(unittest.TestCase):
         lib.docker.from_env = lambda: testlib.mockEngine(containers=[])
         self.assertEqual(lib.countImages("asdf"), 0)
         # 2 images
-        lib.docker.from_env = lambda: testlib.mockEngine(containers=[rightContainer, rightContainer])
+        lib.docker.from_env = lambda: testlib.mockEngine(
+            containers=[rightContainer, rightContainer]
+        )
         self.assertEqual(lib.countImages("asdf"), 2)
         # restore old client
         lib.docker.from_env = oldClient
@@ -444,9 +535,12 @@ class TestDockers(unittest.TestCase):
 
 class TestStream(unittest.TestCase):
     def setUp(self):
-        self.credentials = {"User": 12345, "Password": 678910,
-                            "rtmp-URL": "rtmp://i.amagood.server",
-                            "playpath": "dclive_0_1@2345"}
+        self.credentials = {
+            "User": 12345,
+            "Password": 678910,
+            "rtmp-URL": "rtmp://i.amagood.server",
+            "playpath": "dclive_0_1@2345",
+        }
         self.engine = testlib.mockEngine()
         self.mockframe = testlib.mockFrame()
         self.mockframe.credentials = self.credentials
@@ -460,9 +554,14 @@ class TestStream(unittest.TestCase):
 
     def test_dispatch_Stream(self):
         # test whether container is dispatched
-        lib.dispatch_stream("mockfile", credentials=self.credentials, pathmap="dummy", engine=self.engine)
+        lib.dispatch_stream(
+            "mockfile",
+            credentials=self.credentials,
+            pathmap="dummy",
+            engine=self.engine,
+        )
         self.assertEqual(len(self.engine.containers), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     res = unittest.main(verbosity=3, exit=False)
