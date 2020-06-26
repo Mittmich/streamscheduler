@@ -4,11 +4,13 @@ from functools import partial
 import datetime
 from pathlib import Path
 import logging
+import tempfile
 
 # set loggingpath
 
 datestring = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-logFile = Path(f"C:/temp/{datestring}.log")
+tempdir = tempfile.gettempdir()
+logFile = Path(f"{tempdir}/{datestring}.log")
 logging.basicConfig(
     format="LOGGING::%(levelname)s::%(asctime)s:    %(message)s",
     filename=logFile,
