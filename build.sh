@@ -1,0 +1,1 @@
+pyinstaller --hidden-import xldr --hidden-import pkg_resources.py2_warn --onefile --noconfirm --noconsole --name FGO-Scheduler --add-data data: gui.py
