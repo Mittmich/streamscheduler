@@ -5,6 +5,7 @@ import datetime
 from pathlib import Path
 import logging
 import tempfile
+import os
 
 # set loggingpath
 
@@ -118,7 +119,6 @@ app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))
 # icon
-#print(os.listdir())
-#iconPath = Path("data") / "cropped-FGHomeOffice-1.png"
-#root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
+iconPath = "cropped-FGHomeOffice-1.png"
+root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
 root.mainloop()
