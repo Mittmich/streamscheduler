@@ -18,6 +18,7 @@ newPath = currentPath + ":" + dockerPath
 
 APP = ['gui.py']
 DATA_FILES = ["data/cropped-FGHomeOffice-1.png"]
+#TODO: Version
 OPTIONS = {"iconfile": "data/icon.icns",
             "plist": {
                 "CFBundleName": "FGO-Scheduler",
