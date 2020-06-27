@@ -124,7 +124,7 @@ def parseContainerOutput(contID):
     while True:
         line = contID.logs(tail=1)
         # logger
-        logger.info(f"Container Output is: {line}")
+        logger.debug(f"Container Output is: {line}")
         if len(line.strip().decode().split(" ")) < 10:
             yield None
         else:
