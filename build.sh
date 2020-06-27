@@ -1,1 +1,1 @@
-ython3 setup.py py2app -A
+python3 setup.py py2app -A
