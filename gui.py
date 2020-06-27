@@ -56,9 +56,6 @@ class Window(tkinter.Frame):
         self.master.config(menu=menu)
         # create the file object)
         file = tkinter.Menu(menu)
-        # adds a command to the menu option, calling it exit, and the
-        # command it runs on event is client_exit
-        file.add_command(label="Exit", command=self.client_exit)
         # add load config command
         file.add_command(
             label="Load config file", command=partial(lib.load_config, self)
@@ -114,11 +111,13 @@ class Window(tkinter.Frame):
 
 
 root = tkinter.Tk()
-root.geometry("600x400")
+root.geometry("450x400")
 app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))
 # icon
-iconPath = "cropped-FGHomeOffice-1.png"
+iconPath = Path("cropped-FGHomeOffice-1.png")
+if not iconPath.exists():
+    iconPath = Path("data/cropped-FGHomeOffice-1.png")
 root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
 root.mainloop()

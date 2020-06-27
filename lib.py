@@ -446,7 +446,6 @@ def checkStream(frame):
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
-                    frame.after(0, showinfo, "Info", "Stream ended succesfully!")
                     logger.info("Stream ended successfully!")
                     frame.container = None
             else:  # just started
@@ -531,12 +530,6 @@ def checkRightTime(frame):
                 targetPath, frame.credentials, frame.pathMap
             )
             if frame.container is not None:
-                frame.after(
-                    10,
-                    showinfo,
-                    "Start",
-                    f"Stream start: {Path(videoFile).name} at {time}",
-                )
                 logger.info("Stream started!")
                 # set stream activate to true
                 frame.streamActive = True
