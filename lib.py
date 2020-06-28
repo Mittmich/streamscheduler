@@ -593,7 +593,7 @@ def purgeChannel(frame):
         channelID, apiKey
     )
     r = requests.put(request)
-    if r.status_code != "200":
+    if not (200 <= r.status_code < 300) :
         logger.error("Purging did not work!")
         logger.error(f"Command was: {request}")
         logger.error(f"{r.text}")
