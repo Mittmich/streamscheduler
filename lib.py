@@ -11,6 +11,7 @@ import numpy as np
 import shutil
 import logging
 import requests
+import json
 
 
 # define global variables
@@ -451,6 +452,7 @@ def checkStream(frame):
                     logger.info("Stream ended successfully!")
                     frame.container = None
                     frame.purged = False
+                    startUpload(frame)  # trigger upload sequence
             else:  # just started
                 setStream(frame, "green", "Active")
                 logger.debug(frame.container.logs())
@@ -514,8 +516,10 @@ def checkRightTime(frame):
     if len(frame.schedule) == 0:  # no more streams to stream
         return
     if not frame.streamActive:
-        # check the next stream to start
+        # check the next stream to start and add it to next upload
         nextRow = next(frame.schedule.iterrows())[1]
+        if frame.nextupload is None:
+            frame.nextupload = nextRow
         time = nextRow["Date/Time"]
         videoFile = nextRow["File"]
         # convert to target path in container
@@ -600,3 +604,113 @@ def purgeChannel(frame):
         logger.error(f"{r.text}")
     else:
         logger.info("Purging of channel successful!")
+
+
+def startUpload(frame):
+    """Takes a pandas.Series object stored at
+    frame.nextupload and uploads the file field to dacast
+    VOD."""
+    # unpack arguments
+    fileName = frame.nextupload["File"]
+    apiKey = frame.credentials["API_KEY"]
+    # convert path to target path in container
+    targetPath = f"/vids/{Path(fileName).name}"
+    # get the AWS key
+    data = {"source": targetPath,
+            "callback_url": "https://fitnessgoesoffice.com/",
+            "upload_type": "curl",
+            "auto_encoding": False}
+    awsKeyResponse = requests.post(f"http://api.dacast.com/v2/vod?apikey={apiKey}", data=data)
+    # check if respone was successful
+    if not (200 <= awsKeyResponse.status_code < 300):
+        logger.error("Purging did not work!")
+        logger.error(f"Command was: {awsKeyResponse}")
+        logger.error(f"{awsKeyResponse.text}")
+        frame.nextupload = None
+        return
+    awsKeyParsed = json.loads(awsKeyResponse.text)
+    # construct curl command
+    curlCommand = awsKeyParsed["curl-command"].split("curl")[1]
+    # dispatch curl command
+    client = docker.from_env()
+    contID = client.containers.run("curlimages/curl:latest", curlCommand, detach=True, volumes=frame.pathMap)
+    frame.uploadContainer = contID
+    checkUpload(frame)  # start checking of upload
+
+
+def checkUpload(frame):
+    """Checks whether a started upload was finished"""
+    # unpack arguments
+    fileName = frame.nextupload["File"]
+    apiKey = frame.credentials["API_KEY"]
+    # check if container has finished
+    client = docker.from_env()
+    runningContainers = client.containers.list()
+    if not (frame.uploadContainer in runningContainers):  # container is not in running container list anymore
+        # check whether file exists on VOD DACAST
+        videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
+        # check whether apicall worked
+        if not (200 <= videos.status_code < 300):
+            logger.error("Enumerating vod videos did not work!")
+            logger.error(f"Command was: {videos}")
+            logger.error(f"{videos.text}")
+            frame.nextupload = None
+            return
+        logger.info("Enumerating vod videos wrked!")
+        # parse videos
+        vidsJson = json.loads(videos.text)
+        # get ID by name
+        data = vidsJson["data"]
+        idVid = [i["id"] for i in data if i["title"] == fileName]
+        if idVid is None:
+            # upload failed
+            logger.error("Upload failed!")
+            logger.error(frame.uploadContainer.logs())
+            frame.uploadContainer = None
+            frame.nextupload = None
+            return
+        # upload succeeded, add to package
+        logging.info("Upload succeeded!")
+        addToPackage(frame, idVid)
+        return
+    else:
+        frame.after(10, checkUpload, frame)  # continue checking for upload
+
+
+def addToPackage(frame, idVid):
+    # unpack arguments
+    apiKey = frame.credentials["API_KEY"]
+    packageID = frame.credentials["Package"]
+    # get current content of package
+    result = requests.get(f"http://api.dacast.com/v2/package/{packageID}?apikey={apiKey}&_format=JSON")
+    # check whether apicall worked
+    if not (200 <= result.status_code < 300):
+        logger.error("Getting package contents did not work!")
+        logger.error(f"Command was: {result}")
+        logger.error(f"{result.text}")
+        frame.nextupload = None
+        return
+    logger.info("Getting package contents was successful")
+    # fix content_id vs id issue
+    content = json.loads(result.text)["content"]["data"]
+    oldContent = []
+    for contentDict in content:
+        newContentDict = {}
+        newContentDict["id"] = contentDict.pop("content_id")
+        newContentDict.update(contentDict)
+        oldContent.append(newContentDict)
+    # add new content
+    newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
+    postContent = oldContent + newContent
+    # make request
+    data = {"content": json.dumps(postContent)}
+    postRequest = requests.put(f"http://api.dacast.com/v2/package/{packageID}/content?apikey={apiKey}", data=data)
+    # check if respone was successful
+    if not (200 <= postRequest.status_code < 300):
+        logger.error("Updating package contents did not work!")
+        logger.error(f"Command was: {postRequest}")
+        logger.error(f"{postRequest.text}")
+        frame.nextupload = None
+        return
+    logger.info("Updating package contents was succesful!")
+    frame.nextupload = None

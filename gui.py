@@ -45,6 +45,7 @@ class Window(tkinter.Frame):
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
         self.purged = False
+        self.nextupload = None
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)
