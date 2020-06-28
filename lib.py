@@ -643,7 +643,7 @@ def startUpload(frame):
     checkUpload(frame)  # start checking of upload
 
 
-def checkUpload(frame):
+def checkUpload(frame, retries=0):
     """Checks whether a started upload was finished"""
     # unpack arguments
     fileName = frame.nextupload["File"]
@@ -652,9 +652,10 @@ def checkUpload(frame):
     client = docker.from_env()
     runningContainers = client.containers.list()
     if not (frame.uploadContainer in runningContainers):  # container is not in running container list anymore
+        # initialize idVids that will fail the check
+        idVid = []
         # check whether file exists on VOD DACAST
-        retries = 5
-        while retries > 0:
+        if retries < 5:
             logger.info(f"Retry: {retries}")
             videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
             # check whether apicall worked
@@ -665,18 +666,18 @@ def checkUpload(frame):
                 frame.nextupload = None
                 frame.uploadContainer = None
                 return
+            logger.info("   Enumerating vod videos worked!")
             # parse videos
             vidsJson = json.loads(videos.text)
             # get ID by name
             data = vidsJson["data"]
             idVid = [i["id"] for i in data if i["title"] == Path(fileName).name.split(".mp4")[0]]
-            if len(idVid) > 0:
-                break
-            # decrement retries
-            time.sleep(5)
-            retries -= 1
-        logger.info("Enumerating vod videos worked!")
-        # check if after 3 retries you have the id
+            logger.info(f"idVid: {idVid}")
+            if len(idVid) == 0:
+                # go into another retry
+                frame.after(10000, checkUpload, frame, retries + 1)
+                return
+        # check if after 5 retries you have the id
         if len(idVid) == 0:
             # upload failed
             logger.error("Upload failed!")
@@ -716,7 +717,6 @@ def addToPackage(frame, idVid):
         newContentDict.update(contentDict)
         oldContent.append(newContentDict)
     # add new content
-    import pdb; pdb.set_trace()
     newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
     postContent = oldContent + newContent
     # make request
