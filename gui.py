@@ -44,7 +44,7 @@ class Window(tkinter.Frame):
         self.imageName = "ffmpeg:1.0"
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
-        self.logFile = f"C:\\temp\\{datetime.datetime.now()}.log"
+        self.purged = False
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)
