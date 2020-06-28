@@ -357,6 +357,7 @@ def stopAllContainers(frame, imageName):
                 cont.stop()
         showinfo("Stopped", "All containers stopped!")
         logger.info("All containers stopped!")
+        frame.purged = False  # channel may be dirty, set purged to False
 
 
 # gui-related functions
@@ -508,7 +509,7 @@ def drawConfigGrid(window):
 
 def checkRightTime(frame):
     """checks whether it is time to stream."""
-    if frame.schedule is None:  # not schedule loaded
+    if frame.schedule is None:  # no schedule loaded
         return
     if len(frame.schedule) == 0:  # no more streams to stream
         return
@@ -528,7 +529,7 @@ def checkRightTime(frame):
         logger.debug(
             f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
         )
-        if ((now - time) < differencePurge) and (not frame.purged):
+        if ((now - time) < differencePurge) and (not frame.purged) and (now > time):  # the last conditions make sure that stream is only purged before starting
             frame.purged = True  # make sure the stream starts even if purging failed
             frame.after(0, purgeChannel, frame)
         if np.abs(now - time) < differenceStream:
