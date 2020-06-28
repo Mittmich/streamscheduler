@@ -358,6 +358,7 @@ def stopAllContainers(frame, imageName):
     """stops all running docker containers
     with the specified image name."""
     frame.streamActive = False
+    frame.nextupload = None  # ensure that nothing is uploaded
     client = docker.from_env()
     containers = client.containers.list()
     if len(containers) == 0:
