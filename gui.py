@@ -44,7 +44,7 @@ class Window(tkinter.Frame):
         self.imageName = "ffmpeg:1.0"
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
-        self.logFile = f"C:\\temp\\{datetime.datetime.now()}.log"
+        self.purged = False
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)
@@ -64,20 +64,6 @@ class Window(tkinter.Frame):
         menu.add_cascade(label="File", menu=file)
         # add test menu
         test = tkinter.Menu(menu)
-        test.add_command(
-            label="Test OK Stream",
-            command=partial(
-                lib.setStream, frame=self, color="green", rate="1000kbit/s"
-            ),
-        )
-        test.add_command(
-            label="Test BAD Stream",
-            command=partial(lib.setStream, frame=self, color="red", rate="-/-"),
-        )
-        test.add_command(
-            label="Test Inactivate Stream",
-            command=partial(lib.setStream, frame=self, color="yellow", rate="Inactive"),
-        )
         test.add_command(
             label="Start Test Containter", command=partial(lib.startTestContainer, self)
         )
@@ -103,15 +89,13 @@ class Window(tkinter.Frame):
         # initial call to put checking stream events in the queue
         lib.checkStreamEvents(self)
 
-    def client_exit(self):
-        exit()
-
 
 # start of app
 
 
 root = tkinter.Tk()
-root.geometry("450x400")
+
+root.geometry("410x400")
 app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))

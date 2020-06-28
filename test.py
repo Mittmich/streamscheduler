@@ -85,7 +85,7 @@ class TestCheckStream(unittest.TestCase):
 
     def test_checkStream_containerCreated_finished(self):
         """Check whether reaction to a container that has been created and
-        finished succesfully is correct."""
+        finished successfully is correct."""
         mockframe = testlib.mockFrame()
         mockframe.container = testlib.mockContainer(status="created", log=b"asdf")
         # monkey patch onupdate
@@ -106,7 +106,7 @@ class TestCheckStream(unittest.TestCase):
 
     def test_checkStream_containerCreated_crashed(self):
         """Check whether reaction to a container that has been created and
-        finished succesfully is correct."""
+        finished successfully is correct."""
         mockframe = testlib.mockFrame()
         mockframe.container = testlib.mockContainer(status="created", log=b"error")
         # monkey patch onupdate
@@ -387,6 +387,8 @@ class TestParse(unittest.TestCase):
             "Password": 678910,
             "rtmp-URL": "rtmp://i.amagood.server",
             "playpath": "dclive_0_1@2345",
+            "CHANNEL_ID": 12345,
+            "API_KEY": 12345
         }
         self.mockframe = testlib.mockFrame()
         # draw grid onto mockFrame

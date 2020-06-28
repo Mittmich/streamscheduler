@@ -10,7 +10,7 @@ import pathlib
 import numpy as np
 import shutil
 import logging
-import sys
+import requests
 
 
 # define global variables
@@ -340,7 +340,7 @@ def stopTestContainer(frame):
         logger.error("No container is running!")
         return
     if countImages(frame.imageName) == 0:
-        setStream(frame, "yellow", "Incative")
+        setStream(frame, "yellow", "Inactive")
 
 
 def stopAllContainers(frame, imageName):
@@ -357,6 +357,7 @@ def stopAllContainers(frame, imageName):
                 cont.stop()
         showinfo("Stopped", "All containers stopped!")
         logger.info("All containers stopped!")
+        frame.purged = False  # channel may be dirty, set purged to False
 
 
 # gui-related functions
@@ -440,6 +441,7 @@ def checkStream(frame):
                     setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
                     frame.container = None  # reset container
+                    frame.purged = False
                     # logger
                     logger.error("Stream Failed!")
                     showerror("Error", "Stream failed!")
@@ -448,6 +450,7 @@ def checkStream(frame):
                     frame.streamActive = False  # reset stream active flag
                     logger.info("Stream ended successfully!")
                     frame.container = None
+                    frame.purged = False
             else:  # just started
                 setStream(frame, "green", "Active")
                 logger.debug(frame.container.logs())
@@ -506,7 +509,7 @@ def drawConfigGrid(window):
 
 def checkRightTime(frame):
     """checks whether it is time to stream."""
-    if frame.schedule is None:  # not schedule loaded
+    if frame.schedule is None:  # no schedule loaded
         return
     if len(frame.schedule) == 0:  # no more streams to stream
         return
@@ -519,18 +522,23 @@ def checkRightTime(frame):
         targetPath = f"/vids/{Path(videoFile).name}"
         # check whether it is time to start
         now = frame.nowDT
-        difference = datetime.timedelta(seconds=20)
+        differenceStream = datetime.timedelta(seconds=20)
+        differencePurge = datetime.timedelta(minutes=10)
         frame.timeToStream = np.abs(now - time)
         logger.debug(f"Time to stream is: {frame.timeToStream}")
         logger.debug(
             f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
         )
-        if np.abs(now - time) < difference:
+        if ((now - time) < differencePurge) and (not frame.purged):
+            frame.purged = True  # make sure the stream starts even if purging failed
+            frame.after(0, purgeChannel, frame)
+        if np.abs(now - time) < differenceStream:
             frame.container = dispatch_stream(
                 targetPath, frame.credentials, frame.pathMap
             )
             if frame.container is not None:
-                logger.info("Stream started!")
+
+                logger.info(f"Stream started! {Path(videoFile).name} at {time}")
                 # set stream activate to true
                 frame.streamActive = True
             else:
@@ -572,3 +580,24 @@ def checkStreamEvents(frame):
     checkPastStream(frame)
     # schedule next stream
     frame.after(1000, checkStreamEvents, frame)
+
+
+def purgeChannel(frame):
+    if "API_KEY" not in frame.credentials:
+        logger.error("No api key for purging provided!")
+        return
+    if "CHANNEL_ID" not in frame.credentials:
+        logger.error("No channel for purging provided!")
+        return
+    apiKey = frame.credentials["API_KEY"]
+    channelID = frame.credentials["CHANNEL_ID"]
+    request = "http://api.dacast.com/v2/channel/{}/webdvr/purge?apikey={}".format(
+        channelID, apiKey
+    )
+    r = requests.put(request)
+    if not (200 <= r.status_code < 300) :
+        logger.error("Purging did not work!")
+        logger.error(f"Command was: {request}")
+        logger.error(f"{r.text}")
+    else:
+        logger.info("Purging of channel successful!")
