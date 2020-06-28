@@ -725,6 +725,11 @@ def addToPackage(frame, idVid):
         newContentDict["id"] = contentDict.pop("content_id")
         newContentDict.update(contentDict)
         oldContent.append(newContentDict)
+    # guard against multiple adding --> check if file id is in there already
+    if any(i["id"] == str(idVid[0]) for i in oldContent):
+        logger.info("Uploaded videofile is already in the package!")
+        logger.info(f"ID is {idVid[0]}")
+        return
     # add new content
     newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
     postContent = oldContent + newContent
