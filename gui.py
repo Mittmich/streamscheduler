@@ -114,7 +114,7 @@ class Window(tkinter.Frame):
 
 
 root = tkinter.Tk()
-root.geometry("600x400")
+root.geometry("410x400")
 app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))

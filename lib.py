@@ -374,7 +374,7 @@ def createTimeWidget(frame):
     )
     frame.time_title.pack()
     # system time
-    frame.time_label = tkinter.Label(frameW, font=("Helvetica", 8))
+    frame.time_label = tkinter.Label(frameW, font=("Helvetica", 12))
     frame.time_label.pack()
     frame.time_label["textvariable"] = frame.now
     # initial time display
@@ -415,7 +415,7 @@ def createStatusWidget(frame):
     frame.rectl_status = tkinter.Frame(frameS, width=20, height=20)
     frame.rectl_status.pack()
     # streamingspeed
-    frame.lbl_StreamSpeed = tkinter.Label(frame.rectl_status, font=("Helvetica", 8))
+    frame.lbl_StreamSpeed = tkinter.Label(frame.rectl_status, font=("Helvetica", 12))
     frame.lbl_StreamSpeed.pack()
     frame.lbl_StreamSpeed["textvariable"] = frame.streamSpeed
     frame.lbl_StreamSpeed.configure(bg=frame.status.get())
