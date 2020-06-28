@@ -681,7 +681,7 @@ def checkUpload(frame, retries=0):
             # get ID by name
             data = vidsJson["data"]
             idVid = [i["id"] for i in data if i["title"] == Path(fileName).name.split(".mp4")[0]]
-            logger.info(f"idVid: {idVid}")
+            logger.info(f"  idVid: {idVid}")
             if len(idVid) == 0:
                 # go into another retry
                 frame.after(10000, checkUpload, frame, retries + 1)
