@@ -56,9 +56,6 @@ class Window(tkinter.Frame):
         self.master.config(menu=menu)
         # create the file object)
         file = tkinter.Menu(menu)
-        # adds a command to the menu option, calling it exit, and the
-        # command it runs on event is client_exit
-        file.add_command(label="Exit", command=self.client_exit)
         # add load config command
         file.add_command(
             label="Load config file", command=partial(lib.load_config, self)
@@ -105,9 +102,6 @@ class Window(tkinter.Frame):
         lib.checkDocker(self.imageName)
         # initial call to put checking stream events in the queue
         lib.checkStreamEvents(self)
-
-    def client_exit(self):
-        exit()
 
 
 # start of app
