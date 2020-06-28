@@ -124,7 +124,7 @@ def parseContainerOutput(contID):
     while True:
         line = contID.logs(tail=1)
         # logger
-        logger.info(f"Container Output is: {line}")
+        logger.debug(f"Container Output is: {line}")
         if len(line.strip().decode().split(" ")) < 10:
             yield None
         else:
@@ -447,12 +447,11 @@ def checkStream(frame):
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
-                    frame.after(0, showinfo, "Info", "Stream ended succesfully!")
                     logger.info("Stream ended successfully!")
                     frame.container = None
                     frame.purged = False
             else:  # just started
-                setStream(frame, "green", "-/-")
+                setStream(frame, "green", "Active")
                 logger.debug(frame.container.logs())
                 # get bitrate
                 output = next(parseContainerOutput(frame.container))
@@ -460,7 +459,7 @@ def checkStream(frame):
                 if output is not None:
                     setStream(frame, "green", output)
         if status == "running":
-            setStream(frame, "green", "-/-")
+            setStream(frame, "green", "Active")
             # get bitrate
             output = next(parseContainerOutput(frame.container))
             # set stream Ok
@@ -526,7 +525,6 @@ def checkRightTime(frame):
         differencePurge = datetime.timedelta(minutes=10)
         frame.timeToStream = np.abs(now - time)
         logger.debug(f"Time to stream is: {frame.timeToStream}")
-        logger.debug(f"Time to purge is: {frame.timeToStream}")
         logger.debug(
             f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
         )
@@ -538,13 +536,7 @@ def checkRightTime(frame):
                 targetPath, frame.credentials, frame.pathMap
             )
             if frame.container is not None:
-                frame.after(
-                    10,
-                    showinfo,
-                    "Start",
-                    f"Stream start: {Path(videoFile).name} at {time}",
-                )
-                logger.info("Stream started!")
+                logger.info(f"Stream started! {Path(videoFile).name} at {time}")
                 # set stream activate to true
                 frame.streamActive = True
             else:
