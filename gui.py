@@ -65,20 +65,6 @@ class Window(tkinter.Frame):
         # add test menu
         test = tkinter.Menu(menu)
         test.add_command(
-            label="Test OK Stream",
-            command=partial(
-                lib.setStream, frame=self, color="green", rate="1000kbit/s"
-            ),
-        )
-        test.add_command(
-            label="Test BAD Stream",
-            command=partial(lib.setStream, frame=self, color="red", rate="-/-"),
-        )
-        test.add_command(
-            label="Test Inactivate Stream",
-            command=partial(lib.setStream, frame=self, color="yellow", rate="Inactive"),
-        )
-        test.add_command(
             label="Start Test Containter", command=partial(lib.startTestContainer, self)
         )
         test.add_command(
