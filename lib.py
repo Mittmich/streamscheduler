@@ -12,6 +12,7 @@ import shutil
 import logging
 import requests
 import json
+import time
 
 
 # define global variables
@@ -88,7 +89,7 @@ def check_config_timing(df):
 
 
 def check_config_format(df):
-    """Checks whether config entries are valid"""
+    """Checks whether config entries are valid""" # TODO: add check for package id and unique filename!
     try:
         dirs = []
         for row in df.iterrows():
@@ -213,7 +214,7 @@ def draw_config(window, loadedFrame):
             window.grid["grid"][i][1].set(" ".join(["-"] * 20))
 
 
-def checkDocker(imageName):
+def checkDocker(imageName): # TODO: add check for curlimages/curl:latest
     """Checks if docker is installed and
     whether the right container is available"""
     result = shutil.which("docker")
@@ -611,6 +612,8 @@ def startUpload(frame):
     frame.nextupload and uploads the file field to dacast
     VOD."""
     # unpack arguments
+    if frame.nextupload is None:
+        return
     fileName = frame.nextupload["File"]
     apiKey = frame.credentials["API_KEY"]
     # convert path to target path in container
@@ -623,16 +626,18 @@ def startUpload(frame):
     awsKeyResponse = requests.post(f"http://api.dacast.com/v2/vod?apikey={apiKey}", data=data)
     # check if respone was successful
     if not (200 <= awsKeyResponse.status_code < 300):
-        logger.error("Purging did not work!")
+        logger.error("Getting aws key did not work!")
         logger.error(f"Command was: {awsKeyResponse}")
         logger.error(f"{awsKeyResponse.text}")
         frame.nextupload = None
         return
+    logger.info("Successfully got aws key!")
     awsKeyParsed = json.loads(awsKeyResponse.text)
     # construct curl command
     curlCommand = awsKeyParsed["curl-command"].split("curl")[1]
     # dispatch curl command
     client = docker.from_env()
+    logger.info("Starting upload!")
     contID = client.containers.run("curlimages/curl:latest", curlCommand, detach=True, volumes=frame.pathMap)
     frame.uploadContainer = contID
     checkUpload(frame)  # start checking of upload
@@ -648,21 +653,31 @@ def checkUpload(frame):
     runningContainers = client.containers.list()
     if not (frame.uploadContainer in runningContainers):  # container is not in running container list anymore
         # check whether file exists on VOD DACAST
-        videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
-        # check whether apicall worked
-        if not (200 <= videos.status_code < 300):
-            logger.error("Enumerating vod videos did not work!")
-            logger.error(f"Command was: {videos}")
-            logger.error(f"{videos.text}")
-            frame.nextupload = None
-            return
-        logger.info("Enumerating vod videos wrked!")
-        # parse videos
-        vidsJson = json.loads(videos.text)
-        # get ID by name
-        data = vidsJson["data"]
-        idVid = [i["id"] for i in data if i["title"] == fileName]
-        if idVid is None:
+        retries = 5
+        while retries > 0:
+            logger.info(f"Retry: {retries}")
+            videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
+            # check whether apicall worked
+            if not (200 <= videos.status_code < 300):
+                logger.error("Enumerating vod videos did not work!")
+                logger.error(f"Command was: {videos}")
+                logger.error(f"{videos.text}")
+                frame.nextupload = None
+                frame.uploadContainer = None
+                return
+            # parse videos
+            vidsJson = json.loads(videos.text)
+            # get ID by name
+            data = vidsJson["data"]
+            idVid = [i["id"] for i in data if i["title"] == Path(fileName).name.split(".mp4")[0]]
+            if len(idVid) > 0:
+                break
+            # decrement retries
+            time.sleep(5)
+            retries -= 1
+        logger.info("Enumerating vod videos worked!")
+        # check if after 3 retries you have the id
+        if len(idVid) == 0:
             # upload failed
             logger.error("Upload failed!")
             logger.error(frame.uploadContainer.logs())
@@ -680,7 +695,7 @@ def checkUpload(frame):
 def addToPackage(frame, idVid):
     # unpack arguments
     apiKey = frame.credentials["API_KEY"]
-    packageID = frame.credentials["Package"]
+    packageID = frame.nextupload["Package"]
     # get current content of package
     result = requests.get(f"http://api.dacast.com/v2/package/{packageID}?apikey={apiKey}&_format=JSON")
     # check whether apicall worked
@@ -689,6 +704,7 @@ def addToPackage(frame, idVid):
         logger.error(f"Command was: {result}")
         logger.error(f"{result.text}")
         frame.nextupload = None
+        frame.uploadContainer = None
         return
     logger.info("Getting package contents was successful")
     # fix content_id vs id issue
@@ -700,6 +716,7 @@ def addToPackage(frame, idVid):
         newContentDict.update(contentDict)
         oldContent.append(newContentDict)
     # add new content
+    import pdb; pdb.set_trace()
     newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
     postContent = oldContent + newContent
     # make request
@@ -711,6 +728,7 @@ def addToPackage(frame, idVid):
         logger.error(f"Command was: {postRequest}")
         logger.error(f"{postRequest.text}")
         frame.nextupload = None
+        frame.uploadContainer = None
         return
     logger.info("Updating package contents was succesful!")
     frame.nextupload = None

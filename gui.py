@@ -46,6 +46,7 @@ class Window(tkinter.Frame):
         self.timeToStream = "".join(["-"] * 8)
         self.purged = False
         self.nextupload = None
+        self.uploadContainer = None
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)
@@ -100,6 +101,6 @@ app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))
 # icon
-iconPath = "cropped-FGHomeOffice-1.png"
-root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
+#iconPath = "cropped-FGHomeOffice-1.png"
+#root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
 root.mainloop()
