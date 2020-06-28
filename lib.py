@@ -89,7 +89,10 @@ def check_config_timing(df):
 
 
 def check_config_format(df):
-    """Checks whether config entries are valid""" # TODO: add check for package id and unique filename!
+    """Checks whether config entries are valid"""
+    if "Package" not in df.columns:
+        showerror("Error", "Package ID needs to be provided!")
+        logger.error("Video files are not all in the same directory!")
     try:
         dirs = []
         for row in df.iterrows():
@@ -214,7 +217,7 @@ def draw_config(window, loadedFrame):
             window.grid["grid"][i][1].set(" ".join(["-"] * 20))
 
 
-def checkDocker(imageName): # TODO: add check for curlimages/curl:latest
+def checkDocker(imageName):
     """Checks if docker is installed and
     whether the right container is available"""
     result = shutil.which("docker")
@@ -236,6 +239,12 @@ def checkDocker(imageName): # TODO: add check for curlimages/curl:latest
     except docker.errors.ImageNotFound:
         showerror("Error", f"{imageName} not found in docker.images!")
         logger.error(f"{imageName} not found in docker.images!")
+    # check whether curlimages/curl:latest is installed
+    try:
+        client.images.get("curlimages/curl:latest")
+    except docker.errors.ImageNotFound:
+        showerror("Error", "curlimages/curl:latestnot found in docker.images!")
+        logger.error("curlimages/curl:latest not found in docker.images!")
     if countImages(imageName) != 0:
         showerror(
             "Error",
