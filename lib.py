@@ -544,7 +544,7 @@ def checkRightTime(frame):
         logger.debug(
             f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
         )
-        if ((now - time) < differencePurge) and (not frame.purged):
+        if (np.abs(now - time) < differencePurge) and (not frame.purged):
             frame.purged = True  # make sure the stream starts even if purging failed
             frame.after(0, purgeChannel, frame)
         if np.abs(now - time) < differenceStream:
