@@ -538,7 +538,7 @@ def checkRightTime(frame):
         # check whether it is time to start
         now = frame.nowDT
         differenceStream = datetime.timedelta(seconds=20)
-        differencePurge = datetime.timedelta(minutes=10)
+        differencePurge = datetime.timedelta(minutes=20)
         frame.timeToStream = np.abs(now - time)
         logger.debug(f"Time to stream is: {frame.timeToStream}")
         logger.debug(
@@ -665,7 +665,7 @@ def checkUpload(frame, retries=0):
         # initialize idVids that will fail the check
         idVid = []
         # check whether file exists on VOD DACAST
-        if retries < 5:
+        if retries < 10:
             logger.info(f"Retry: {retries}")
             videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
             # check whether apicall worked
@@ -685,7 +685,7 @@ def checkUpload(frame, retries=0):
             logger.info(f"  idVid: {idVid}")
             if len(idVid) == 0:
                 # go into another retry
-                frame.after(10000, checkUpload, frame, retries + 1)
+                frame.after(30000, checkUpload, frame, retries + 1)
                 return
         # check if after 5 retries you have the id
         if len(idVid) == 0:
