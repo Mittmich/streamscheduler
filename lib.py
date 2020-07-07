@@ -725,9 +725,11 @@ def addToPackage(frame, idVid):
         newContentDict = {}
         newContentDict["id"] = contentDict.pop("content_id")
         newContentDict.update(contentDict)
+        # bump position
+        newContentDict["position"] = newContentDict["position"] + 1
         oldContent.append(newContentDict)
-    # add new content
-    newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
+    # add new content at position 0
+    newContent = [{"type": "vod", "position": 0, "id": str(idVid[0])}]
     postContent = newContent + oldContent
     # make request
     data = {"content": json.dumps(postContent)}
