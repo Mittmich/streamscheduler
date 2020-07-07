@@ -728,7 +728,7 @@ def addToPackage(frame, idVid):
         oldContent.append(newContentDict)
     # add new content
     newContent = [{"type": "vod", "position": len(oldContent), "id": str(idVid[0])}]
-    postContent = oldContent + newContent
+    postContent = newContent + oldContent
     # make request
     data = {"content": json.dumps(postContent)}
     postRequest = requests.put(f"http://api.dacast.com/v2/package/{packageID}/content?apikey={apiKey}", data=data)
