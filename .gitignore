@@ -10,3 +10,4 @@ dist/*
 *.spec
 .DS_Store
 real_vids/*
+test_timed*
