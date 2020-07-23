@@ -41,7 +41,7 @@ class Window(tkinter.Frame):
         self.credentials = None
         self.container = None
         self.streamActive = False
-        self.imageName = "ffmpeg:1.0"
+        self.imageName = "jrottenberg/ffmpeg:4.1-ubuntu"
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
         self.purged = False

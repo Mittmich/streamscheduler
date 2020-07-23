@@ -17,40 +17,38 @@ import time
 
 # define global variables
 
-RTMPSETTINGS_TEMPLATE = (
-    "'{} "
-    "flashver=FMLE/3.020(compatible;20FMSc/1.0)"
-    " live=true pubUser={} pubPasswd={} playpath={}'"
-)
+# Format order: User, Password, server (without rtmp://), playpath
 
-FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
+RTMPSETTINGS_TEMPLATE = "'rtmp://{}:{}@{}/{}'"
+
+FFMPEG_TEMPLATE_TEST = """
+                       -re\
                         -f lavfi\
                         -i testsrc\
-                        -c:v libx264\
-                        -b:v 1600k\
                         -preset ultrafast\
-                        -b 900k\
-                        -c:a libfdk_aac\
+                        -g 25\
+                        -vcodec libx264\
+                        -bufsize 900k\
                         -b:a 128k\
                         -s 960x720\
-                        -x264opts keyint=50\
-                        -g 25\
                         -pix_fmt yuv420p\
-                        -f flv {}"""
+                        -flvflags no_duration_filesize\
+                        -f flv {}
+                        """
 
-FFMPEG_TEMPLATE = """ffmpeg -re\
-                        -i {}\
-                        -c:v libx264\
-                        -b:v 1600k\
-                        -preset ultrafast\
-                        -b 900k\
-                        -c:a libfdk_aac\
-                        -b:a 128k\
-                        -s 1280x720\
-                        -x264opts keyint=50\
-                        -g 25\
-                        -pix_fmt yuv420p\
-                        -f flv {}"""
+FFMPEG_TEMPLATE = """-re\
+                -i {}\
+                 -preset ultrafast\
+                 -g 25\
+                 -x264opts keyint=50\
+                 -vcodec libx264\
+                 -bufsize 900k\
+                 -b:a 128k\
+                 -s 1280x720\
+                 -ar 44100\
+                 -pix_fmt yuv420p\
+                 -flvflags no_duration_filesize\
+                 -f flv {}"""
 
 # set loggingpath
 
@@ -185,14 +183,12 @@ def load_config(frame, filepath=None):
 
 
 def parseFailure(container):
-    """Check if container has failed.
-    This is very crude!"""
-    check = container.logs().decode()
-    if (
-        ("error" in check.lower())
-        or ("failure" in check.lower())
-        or ("not found" in check.lower())
-    ):
+    """Check if container has failed."""
+    docker_api = docker.APIClient()
+    inspected = docker_api.inspect_container(container.short_id)
+    exit_code = inspected["State"]["ExitCode"]
+    if exit_code != 0:
+        check = container.logs().decode()
         # logger
         logger.error(f"Stream Failed! With the following line {check}")
         return True
@@ -233,7 +229,7 @@ def checkDocker(imageName):
         showerror("error", "Docker is not running!")
         logger.error("Docker is not running!")
         return
-    # check whether image is installed
+    # check whether ffmpeg image is installed
     try:
         client.images.get(imageName)
     except docker.errors.ImageNotFound:
@@ -273,9 +269,9 @@ def dispatch_test_stream(credentials, engine=None):
     Returns subprocess.Popen instance."""
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(
-        credentials["rtmp-URL"],
         credentials["User"],
         credentials["Password"],
+        credentials["rtmp-URL"],
         credentials["playpath"],
     )
     # fill in ffmpeg
@@ -287,7 +283,7 @@ def dispatch_test_stream(credentials, engine=None):
         client = engine
     # start container
     try:
-        contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
+        contID = client.containers.run("jrottenberg/ffmpeg:4.1-ubuntu", ffmpegCommand, detach=True)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
         logger.error("Docker is not ready/installed!")
@@ -301,9 +297,9 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
     Returns docker container object."""
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(
-        credentials["rtmp-URL"],
         credentials["User"],
         credentials["Password"],
+        credentials["rtmp-URL"],
         credentials["playpath"],
     )
     # fill in ffmpeg
@@ -315,7 +311,7 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         client = engine
     try:
         contID = client.containers.run(
-            "ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap
+            "jrottenberg/ffmpeg:4.1-ubuntu", ffmpegCommand, detach=True, volumes=pathmap
         )
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
@@ -609,7 +605,7 @@ def purgeChannel(frame):
         channelID, apiKey
     )
     r = requests.put(request)
-    if not (200 <= r.status_code < 300) :
+    if not (200 <= r.status_code < 300):
         logger.error("Purging did not work!")
         logger.error(f"Command was: {request}")
         logger.error(f"{r.text}")
@@ -629,11 +625,15 @@ def startUpload(frame):
     # convert path to target path in container
     targetPath = f"/vids/{Path(fileName).name}"
     # get the AWS key
-    data = {"source": targetPath,
-            "callback_url": "https://fitnessgoesoffice.com/",
-            "upload_type": "curl",
-            "auto_encoding": False}
-    awsKeyResponse = requests.post(f"http://api.dacast.com/v2/vod?apikey={apiKey}", data=data)
+    data = {
+        "source": targetPath,
+        "callback_url": "https://fitnessgoesoffice.com/",
+        "upload_type": "curl",
+        "auto_encoding": False,
+    }
+    awsKeyResponse = requests.post(
+        f"http://api.dacast.com/v2/vod?apikey={apiKey}", data=data
+    )
     # check if respone was successful
     if not (200 <= awsKeyResponse.status_code < 300):
         logger.error("Getting aws key did not work!")
@@ -648,7 +648,9 @@ def startUpload(frame):
     # dispatch curl command
     client = docker.from_env()
     logger.info("Starting upload!")
-    contID = client.containers.run("curlimages/curl:latest", curlCommand, detach=True, volumes=frame.pathMap)
+    contID = client.containers.run(
+        "curlimages/curl:latest", curlCommand, detach=True, volumes=frame.pathMap
+    )
     frame.uploadContainer = contID
     checkUpload(frame)  # start checking of upload
 
@@ -661,13 +663,17 @@ def checkUpload(frame, retries=0):
     # check if container has finished
     client = docker.from_env()
     runningContainers = client.containers.list()
-    if not (frame.uploadContainer in runningContainers):  # container is not in running container list anymore
+    if not (
+        frame.uploadContainer in runningContainers
+    ):  # container is not in running container list anymore
         # initialize idVids that will fail the check
         idVid = []
         # check whether file exists on VOD DACAST
         if retries < 10:
             logger.info(f"Retry: {retries}")
-            videos = requests.get(f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON")
+            videos = requests.get(
+                f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON"
+            )
             # check whether apicall worked
             if not (200 <= videos.status_code < 300):
                 logger.error("Enumerating vod videos did not work!")
@@ -681,7 +687,11 @@ def checkUpload(frame, retries=0):
             vidsJson = json.loads(videos.text)
             # get ID by name
             data = vidsJson["data"]
-            idVid = [i["id"] for i in data if i["title"] == Path(fileName).name.split(".mp4")[0]]
+            idVid = [
+                i["id"]
+                for i in data
+                if i["title"] == Path(fileName).name.split(".mp4")[0]
+            ]
             logger.info(f"  idVid: {idVid}")
             if len(idVid) == 0:
                 # go into another retry
@@ -708,7 +718,9 @@ def addToPackage(frame, idVid):
     apiKey = frame.credentials["API_KEY"]
     packageID = frame.nextupload["Package"]
     # get current content of package
-    result = requests.get(f"http://api.dacast.com/v2/package/{packageID}?apikey={apiKey}&_format=JSON")
+    result = requests.get(
+        f"http://api.dacast.com/v2/package/{packageID}?apikey={apiKey}&_format=JSON"
+    )
     # check whether apicall worked
     if not (200 <= result.status_code < 300):
         logger.error("Getting package contents did not work!")
@@ -733,7 +745,10 @@ def addToPackage(frame, idVid):
     postContent = newContent + oldContent
     # make request
     data = {"content": json.dumps(postContent)}
-    postRequest = requests.put(f"http://api.dacast.com/v2/package/{packageID}/content?apikey={apiKey}", data=data)
+    postRequest = requests.put(
+        f"http://api.dacast.com/v2/package/{packageID}/content?apikey={apiKey}",
+        data=data,
+    )
     # check if respone was successful
     if not (200 <= postRequest.status_code < 300):
         logger.error("Updating package contents did not work!")
