@@ -47,6 +47,8 @@ class Window(tkinter.Frame):
         self.purged = False
         self.nextupload = None
         self.uploadContainer = None
+        self.stream_retry = 0
+        self.stream_do_retries = True
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)

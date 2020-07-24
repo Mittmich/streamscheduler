@@ -37,6 +37,7 @@ FFMPEG_TEMPLATE_TEST = """
                         """
 
 FFMPEG_TEMPLATE = """-re\
+                -ss {}\
                 -i {}\
                  -preset ultrafast\
                  -g 25\
@@ -292,7 +293,7 @@ def dispatch_test_stream(credentials, engine=None):
         return contID
 
 
-def dispatch_stream(videofile, credentials, pathmap, engine=None):
+def dispatch_stream(videofile, credentials, pathmap, engine=None, time=0):
     """Starts streaming via ffmpeg.
     Returns docker container object."""
     # fill in credentials
@@ -303,7 +304,7 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         credentials["playpath"],
     )
     # fill in ffmpeg
-    ffmpegCommand = FFMPEG_TEMPLATE.format(videofile, filledRTMP)
+    ffmpegCommand = FFMPEG_TEMPLATE.format(time, videofile, filledRTMP)
     # connect to docker client
     if engine is None:
         client = docker.from_env()
@@ -318,7 +319,7 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         logger.error("Docker is not ready/installed")
         return None
     else:
-        logger.debug(f"Stream dispatched with contID {contID}")
+        logger.info(f"Stream dispatched with contID {contID} at time {time}")
         return contID
 
 
@@ -355,6 +356,7 @@ def stopAllContainers(frame, imageName):
     with the specified image name."""
     frame.streamActive = False
     frame.nextupload = None  # ensure that nothing is uploaded
+    frame.stream_do_retries = False  # ensure that running streams are not restrated after manual stop
     client = docker.from_env()
     containers = client.containers.list()
     if len(containers) == 0:
@@ -433,8 +435,8 @@ def createStatusWidget(frame):
 
 def checkStream(frame):
     """checks continuously whether
-    a Stream is running and sets the
-    statusWidget accordingly"""
+    a Stream is running and handles
+    necessary events associated with failure"""
     client = docker.from_env()
     # check whether container is running
     if frame.container is not None:
@@ -452,7 +454,11 @@ def checkStream(frame):
                     frame.purged = False
                     # logger
                     logger.error("Stream Failed!")
-                    showerror("Error", "Stream failed!")
+                    # check if a retry should be done (retry flag active and below 6 retries)
+                    if (frame.stream_do_retries) and (frame.stream_retry <= 7):
+                        handle_retry(frame)
+                    else:
+                        showerror("Error", "Stream failed!")
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
@@ -461,6 +467,8 @@ def checkStream(frame):
                     frame.purged = False
                     startUpload(frame)  # trigger upload sequence
             else:  # just started
+                # reset retry parameters
+                frame.stream_retry = 0
                 setStream(frame, "green", "Active")
                 logger.debug(frame.container.logs())
                 # get bitrate
@@ -544,12 +552,16 @@ def checkRightTime(frame):
             frame.purged = True  # make sure the stream starts even if purging failed
             frame.after(0, purgeChannel, frame)
         if np.abs(now - time) < differenceStream:
+            # dispatch stream
             frame.container = dispatch_stream(
                 targetPath, frame.credentials, frame.pathMap
             )
             if frame.container is not None:
                 logger.info(f"Stream started! {Path(videoFile).name} at {time}")
                 # set stream activate to true
+                # add running stream info
+                frame.current_stream_path = targetPath
+                frame.stream_start_time = frame.nowDT
                 frame.streamActive = True
             else:
                 frame.after(
@@ -759,3 +771,25 @@ def addToPackage(frame, idVid):
         return
     logger.info("Updating package contents was succesful!")
     frame.nextupload = None
+
+
+def handle_retry(frame):
+    """Handles restarting stream after failure"""
+    # calculate offset time of this is the first retry
+    if frame.stream_retry == 0:
+        time_delta = frame.nowDT - frame.stream_start_time
+        frame.stream_retry_offset = int(time_delta.total_seconds())
+    # if retry if more than 5, try backup url
+    if frame.stream_retry >= 5:
+        credentials = frame.credentials.copy()
+        credentials["rtmp-URL"] = credentials["backup_server"]
+    else:
+        credentials = frame.credentials
+    # dispatch stream again
+    contID = dispatch_stream(frame.current_stream_path, credentials, frame.pathMap, time=frame.stream_retry_offset)
+    # wait until control is yielded back to the main queue
+    time.sleep(2**(frame.stream_retry))
+    frame.container = contID
+    # increment retries
+    frame.stream_retry += 1
+    logger.info(f"Retry number {frame.stream_retry}")
