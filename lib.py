@@ -155,6 +155,7 @@ def load_config(frame, filepath=None):
     # check format of config
     good = check_config_format(schedule)
     if good:
+        frame.stream_do_retries = True  # switch on retries
         # combine date and time for display
         schedule.loc[:, "Date/Time"] = schedule.apply(
             lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1
