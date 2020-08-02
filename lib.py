@@ -11,44 +11,45 @@ import numpy as np
 import shutil
 import logging
 import requests
+import json
+import time
 
 
 # define global variables
 
-RTMPSETTINGS_TEMPLATE = (
-    "'{} "
-    "flashver=FMLE/3.020(compatible;20FMSc/1.0)"
-    " live=true pubUser={} pubPasswd={} playpath={}'"
-)
+# Format order: User, Password, server (without rtmp://), playpath
 
-FFMPEG_TEMPLATE_TEST = """ffmpeg -re\
+RTMPSETTINGS_TEMPLATE = "'rtmp://{}:{}@{}/{}'"
+
+FFMPEG_TEMPLATE_TEST = """
+                       -re\
                         -f lavfi\
                         -i testsrc\
-                        -c:v libx264\
-                        -b:v 1600k\
                         -preset ultrafast\
-                        -b 900k\
-                        -c:a libfdk_aac\
+                        -g 25\
+                        -vcodec libx264\
+                        -bufsize 900k\
                         -b:a 128k\
                         -s 960x720\
-                        -x264opts keyint=50\
-                        -g 25\
                         -pix_fmt yuv420p\
-                        -f flv {}"""
+                        -flvflags no_duration_filesize\
+                        -f flv {}
+                        """
 
-FFMPEG_TEMPLATE = """ffmpeg -re\
-                        -i {}\
-                        -c:v libx264\
-                        -b:v 1600k\
-                        -preset ultrafast\
-                        -b 900k\
-                        -c:a libfdk_aac\
-                        -b:a 128k\
-                        -s 1280x720\
-                        -x264opts keyint=50\
-                        -g 25\
-                        -pix_fmt yuv420p\
-                        -f flv {}"""
+FFMPEG_TEMPLATE = """-re\
+                -ss {}\
+                -i {}\
+                 -preset ultrafast\
+                 -g 25\
+                 -x264opts keyint=50\
+                 -vcodec libx264\
+                 -bufsize 900k\
+                 -b:a 128k\
+                 -s 1280x720\
+                 -ar 44100\
+                 -pix_fmt yuv420p\
+                 -flvflags no_duration_filesize\
+                 -f flv {}"""
 
 # set loggingpath
 
@@ -88,6 +89,9 @@ def check_config_timing(df):
 
 def check_config_format(df):
     """Checks whether config entries are valid"""
+    if "Package" not in df.columns:
+        showerror("Error", "Package ID needs to be provided!")
+        logger.error("Video files are not all in the same directory!")
     try:
         dirs = []
         for row in df.iterrows():
@@ -151,6 +155,7 @@ def load_config(frame, filepath=None):
     # check format of config
     good = check_config_format(schedule)
     if good:
+        frame.stream_do_retries = True  # switch on retries
         # combine date and time for display
         schedule.loc[:, "Date/Time"] = schedule.apply(
             lambda x: pd.Timestamp.combine(x["Date"], x["Time"]), axis=1
@@ -180,14 +185,12 @@ def load_config(frame, filepath=None):
 
 
 def parseFailure(container):
-    """Check if container has failed.
-    This is very crude!"""
-    check = container.logs().decode()
-    if (
-        ("error" in check.lower())
-        or ("failure" in check.lower())
-        or ("not found" in check.lower())
-    ):
+    """Check if container has failed."""
+    docker_api = docker.APIClient()
+    inspected = docker_api.inspect_container(container.short_id)
+    exit_code = inspected["State"]["ExitCode"]
+    if exit_code != 0:
+        check = container.logs().decode()
         # logger
         logger.error(f"Stream Failed! With the following line {check}")
         return True
@@ -228,12 +231,18 @@ def checkDocker(imageName):
         showerror("error", "Docker is not running!")
         logger.error("Docker is not running!")
         return
-    # check whether image is installed
+    # check whether ffmpeg image is installed
     try:
         client.images.get(imageName)
     except docker.errors.ImageNotFound:
         showerror("Error", f"{imageName} not found in docker.images!")
         logger.error(f"{imageName} not found in docker.images!")
+    # check whether curlimages/curl:latest is installed
+    try:
+        client.images.get("curlimages/curl:latest")
+    except docker.errors.ImageNotFound:
+        showerror("Error", "curlimages/curl:latestnot found in docker.images!")
+        logger.error("curlimages/curl:latest not found in docker.images!")
     if countImages(imageName) != 0:
         showerror(
             "Error",
@@ -262,9 +271,9 @@ def dispatch_test_stream(credentials, engine=None):
     Returns subprocess.Popen instance."""
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(
-        credentials["rtmp-URL"],
         credentials["User"],
         credentials["Password"],
+        credentials["rtmp-URL"],
         credentials["playpath"],
     )
     # fill in ffmpeg
@@ -276,7 +285,7 @@ def dispatch_test_stream(credentials, engine=None):
         client = engine
     # start container
     try:
-        contID = client.containers.run("ffmpeg:1.0", ffmpegCommand, detach=True)
+        contID = client.containers.run("jrottenberg/ffmpeg:4.1-ubuntu", ffmpegCommand, detach=True)
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
         logger.error("Docker is not ready/installed!")
@@ -285,18 +294,18 @@ def dispatch_test_stream(credentials, engine=None):
         return contID
 
 
-def dispatch_stream(videofile, credentials, pathmap, engine=None):
+def dispatch_stream(videofile, credentials, pathmap, engine=None, time=0):
     """Starts streaming via ffmpeg.
     Returns docker container object."""
     # fill in credentials
     filledRTMP = RTMPSETTINGS_TEMPLATE.format(
-        credentials["rtmp-URL"],
         credentials["User"],
         credentials["Password"],
+        credentials["rtmp-URL"],
         credentials["playpath"],
     )
     # fill in ffmpeg
-    ffmpegCommand = FFMPEG_TEMPLATE.format(videofile, filledRTMP)
+    ffmpegCommand = FFMPEG_TEMPLATE.format(time, videofile, filledRTMP)
     # connect to docker client
     if engine is None:
         client = docker.from_env()
@@ -304,14 +313,14 @@ def dispatch_stream(videofile, credentials, pathmap, engine=None):
         client = engine
     try:
         contID = client.containers.run(
-            "ffmpeg:1.0", ffmpegCommand, detach=True, volumes=pathmap
+            "jrottenberg/ffmpeg:4.1-ubuntu", ffmpegCommand, detach=True, volumes=pathmap
         )
     except docker.errors.APIError:
         showerror("Erro", "Docker is not ready/installed!")
         logger.error("Docker is not ready/installed")
         return None
     else:
-        logger.debug(f"Stream dispatched with contID {contID}")
+        logger.info(f"Stream dispatched with contID {contID} at time {time}")
         return contID
 
 
@@ -347,6 +356,8 @@ def stopAllContainers(frame, imageName):
     """stops all running docker containers
     with the specified image name."""
     frame.streamActive = False
+    frame.nextupload = None  # ensure that nothing is uploaded
+    frame.stream_do_retries = False  # ensure that running streams are not restrated after manual stop
     client = docker.from_env()
     containers = client.containers.list()
     if len(containers) == 0:
@@ -425,8 +436,8 @@ def createStatusWidget(frame):
 
 def checkStream(frame):
     """checks continuously whether
-    a Stream is running and sets the
-    statusWidget accordingly"""
+    a Stream is running and handles
+    necessary events associated with failure"""
     client = docker.from_env()
     # check whether container is running
     if frame.container is not None:
@@ -444,14 +455,21 @@ def checkStream(frame):
                     frame.purged = False
                     # logger
                     logger.error("Stream Failed!")
-                    showerror("Error", "Stream failed!")
+                    # check if a retry should be done (retry flag active and below 6 retries)
+                    if (frame.stream_do_retries) and (frame.stream_retry <= 7):
+                        handle_retry(frame)
+                    else:
+                        showerror("Error", "Stream failed!")
                 else:  # was ok and stopped normally
                     setStream(frame, "yellow", "Inactive")
                     frame.streamActive = False  # reset stream active flag
                     logger.info("Stream ended successfully!")
                     frame.container = None
                     frame.purged = False
+                    startUpload(frame)  # trigger upload sequence
             else:  # just started
+                # reset retry parameters
+                frame.stream_retry = 0
                 setStream(frame, "green", "Active")
                 logger.debug(frame.container.logs())
                 # get bitrate
@@ -514,8 +532,10 @@ def checkRightTime(frame):
     if len(frame.schedule) == 0:  # no more streams to stream
         return
     if not frame.streamActive:
-        # check the next stream to start
+        # check the next stream to start and add it to next upload
         nextRow = next(frame.schedule.iterrows())[1]
+        if frame.nextupload is None:
+            frame.nextupload = nextRow
         time = nextRow["Date/Time"]
         videoFile = nextRow["File"]
         # convert to target path in container
@@ -523,16 +543,17 @@ def checkRightTime(frame):
         # check whether it is time to start
         now = frame.nowDT
         differenceStream = datetime.timedelta(seconds=20)
-        differencePurge = datetime.timedelta(minutes=10)
+        differencePurge = datetime.timedelta(minutes=20)
         frame.timeToStream = np.abs(now - time)
         logger.debug(f"Time to stream is: {frame.timeToStream}")
         logger.debug(
             f"Next stream is: {frame.schedule['File'].values[0]} - {frame.schedule['Date/Time'].values[0]}"
         )
-        if ((now - time) < differencePurge) and (not frame.purged):
+        if (np.abs(now - time) < differencePurge) and (not frame.purged):
             frame.purged = True  # make sure the stream starts even if purging failed
             frame.after(0, purgeChannel, frame)
         if np.abs(now - time) < differenceStream:
+            # dispatch stream
             frame.container = dispatch_stream(
                 targetPath, frame.credentials, frame.pathMap
             )
@@ -540,6 +561,9 @@ def checkRightTime(frame):
 
                 logger.info(f"Stream started! {Path(videoFile).name} at {time}")
                 # set stream activate to true
+                # add running stream info
+                frame.current_stream_path = targetPath
+                frame.stream_start_time = frame.nowDT
                 frame.streamActive = True
             else:
                 frame.after(
@@ -595,9 +619,179 @@ def purgeChannel(frame):
         channelID, apiKey
     )
     r = requests.put(request)
-    if not (200 <= r.status_code < 300) :
+    if not (200 <= r.status_code < 300):
         logger.error("Purging did not work!")
         logger.error(f"Command was: {request}")
         logger.error(f"{r.text}")
     else:
         logger.info("Purging of channel successful!")
+
+
+def startUpload(frame):
+    """Takes a pandas.Series object stored at
+    frame.nextupload and uploads the file field to dacast
+    VOD."""
+    # unpack arguments
+    if frame.nextupload is None:
+        return
+    fileName = frame.nextupload["File"]
+    apiKey = frame.credentials["API_KEY"]
+    # convert path to target path in container
+    targetPath = f"/vids/{Path(fileName).name}"
+    # get the AWS key
+    data = {
+        "source": targetPath,
+        "callback_url": "https://fitnessgoesoffice.com/",
+        "upload_type": "curl",
+        "auto_encoding": False,
+    }
+    awsKeyResponse = requests.post(
+        f"http://api.dacast.com/v2/vod?apikey={apiKey}", data=data
+    )
+    # check if respone was successful
+    if not (200 <= awsKeyResponse.status_code < 300):
+        logger.error("Getting aws key did not work!")
+        logger.error(f"Command was: {awsKeyResponse}")
+        logger.error(f"{awsKeyResponse.text}")
+        frame.nextupload = None
+        return
+    logger.info("Successfully got aws key!")
+    awsKeyParsed = json.loads(awsKeyResponse.text)
+    # construct curl command
+    curlCommand = awsKeyParsed["curl-command"].split("curl")[1]
+    # dispatch curl command
+    client = docker.from_env()
+    logger.info("Starting upload!")
+    contID = client.containers.run(
+        "curlimages/curl:latest", curlCommand, detach=True, volumes=frame.pathMap
+    )
+    frame.uploadContainer = contID
+    checkUpload(frame)  # start checking of upload
+
+
+def checkUpload(frame, retries=0):
+    """Checks whether a started upload was finished"""
+    # unpack arguments
+    fileName = frame.nextupload["File"]
+    apiKey = frame.credentials["API_KEY"]
+    # check if container has finished
+    client = docker.from_env()
+    runningContainers = client.containers.list()
+    if not (
+        frame.uploadContainer in runningContainers
+    ):  # container is not in running container list anymore
+        # initialize idVids that will fail the check
+        idVid = []
+        # check whether file exists on VOD DACAST
+        if retries < 10:
+            logger.info(f"Retry: {retries}")
+            videos = requests.get(
+                f"http://api.dacast.com/v2/vod?apikey={apiKey}&_format=JSON"
+            )
+            # check whether apicall worked
+            if not (200 <= videos.status_code < 300):
+                logger.error("Enumerating vod videos did not work!")
+                logger.error(f"Command was: {videos}")
+                logger.error(f"{videos.text}")
+                frame.nextupload = None
+                frame.uploadContainer = None
+                return
+            logger.info("   Enumerating vod videos worked!")
+            # parse videos
+            vidsJson = json.loads(videos.text)
+            # get ID by name
+            data = vidsJson["data"]
+            idVid = [
+                i["id"]
+                for i in data
+                if i["title"] == Path(fileName).name.split(".mp4")[0]
+            ]
+            logger.info(f"  idVid: {idVid}")
+            if len(idVid) == 0:
+                # go into another retry
+                frame.after(30000, checkUpload, frame, retries + 1)
+                return
+        # check if after 5 retries you have the id
+        if len(idVid) == 0:
+            # upload failed
+            logger.error("Upload failed!")
+            logger.error(frame.uploadContainer.logs())
+            frame.uploadContainer = None
+            frame.nextupload = None
+            return
+        # upload succeeded, add to package
+        logging.info("Upload succeeded!")
+        addToPackage(frame, idVid)
+        return
+    else:
+        frame.after(10, checkUpload, frame)  # continue checking for upload
+
+
+def addToPackage(frame, idVid):
+    # unpack arguments
+    apiKey = frame.credentials["API_KEY"]
+    packageID = frame.nextupload["Package"]
+    # get current content of package
+    result = requests.get(
+        f"http://api.dacast.com/v2/package/{packageID}?apikey={apiKey}&_format=JSON"
+    )
+    # check whether apicall worked
+    if not (200 <= result.status_code < 300):
+        logger.error("Getting package contents did not work!")
+        logger.error(f"Command was: {result}")
+        logger.error(f"{result.text}")
+        frame.nextupload = None
+        frame.uploadContainer = None
+        return
+    logger.info("Getting package contents was successful")
+    # fix content_id vs id issue
+    content = json.loads(result.text)["content"]["data"]
+    oldContent = []
+    for contentDict in content:
+        newContentDict = {}
+        newContentDict["id"] = contentDict.pop("content_id")
+        newContentDict.update(contentDict)
+        # bump position
+        newContentDict["position"] = newContentDict["position"] + 1
+        oldContent.append(newContentDict)
+    # add new content at position 0
+    newContent = [{"type": "vod", "position": 0, "id": str(idVid[0])}]
+    postContent = newContent + oldContent
+    # make request
+    data = {"content": json.dumps(postContent)}
+    postRequest = requests.put(
+        f"http://api.dacast.com/v2/package/{packageID}/content?apikey={apiKey}",
+        data=data,
+    )
+    # check if respone was successful
+    if not (200 <= postRequest.status_code < 300):
+        logger.error("Updating package contents did not work!")
+        logger.error(f"Command was: {postRequest}")
+        logger.error(f"{postRequest.text}")
+        frame.nextupload = None
+        frame.uploadContainer = None
+        return
+    logger.info("Updating package contents was succesful!")
+    frame.nextupload = None
+
+
+def handle_retry(frame):
+    """Handles restarting stream after failure"""
+    # calculate offset time of this is the first retry
+    if frame.stream_retry == 0:
+        time_delta = frame.nowDT - frame.stream_start_time
+        frame.stream_retry_offset = int(time_delta.total_seconds())
+    # if retry if more than 5, try backup url
+    if frame.stream_retry >= 5:
+        credentials = frame.credentials.copy()
+        credentials["rtmp-URL"] = credentials["backup_server"]
+    else:
+        credentials = frame.credentials
+    # dispatch stream again
+    contID = dispatch_stream(frame.current_stream_path, credentials, frame.pathMap, time=frame.stream_retry_offset)
+    # wait until control is yielded back to the main queue
+    time.sleep(2**(frame.stream_retry))
+    frame.container = contID
+    # increment retries
+    frame.stream_retry += 1
+    logger.info(f"Retry number {frame.stream_retry}")

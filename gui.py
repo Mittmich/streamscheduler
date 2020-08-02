@@ -41,10 +41,14 @@ class Window(tkinter.Frame):
         self.credentials = None
         self.container = None
         self.streamActive = False
-        self.imageName = "ffmpeg:1.0"
+        self.imageName = "jrottenberg/ffmpeg:4.1-ubuntu"
         self.schedule = None
         self.timeToStream = "".join(["-"] * 8)
         self.purged = False
+        self.nextupload = None
+        self.uploadContainer = None
+        self.stream_retry = 0
+        self.stream_do_retries = True
         # set up widgets
         lib.createTimeWidget(self)
         lib.createStatusWidget(self)

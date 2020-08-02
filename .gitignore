@@ -4,9 +4,10 @@ __pycache__/*
 .vscode/*
 test_files_key/*
 ~$*
-Real_vid_1.mp4
-Real_vid_2.mp4
+Real_vid_*
 build/*
 dist/*
 *.spec
 .DS_Store
+real_vids/*
+test_timed*
