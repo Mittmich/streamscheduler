@@ -103,6 +103,6 @@ app = Window(root)
 # close dialog
 root.protocol("WM_DELETE_WINDOW", partial(lib.askExit, app, root))
 # icon
-#iconPath = "cropped-FGHomeOffice-1.png"
-#root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
+iconPath = "data/cropped-FGHomeOffice-1.png"
+root.iconphoto(False, tkinter.PhotoImage(file=iconPath))
 root.mainloop()
